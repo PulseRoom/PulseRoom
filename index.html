@@ -102,7 +102,7 @@
         gap: 20px;
     }
     .pagination { display: flex; justify-content: center; align-items: center; margin-top: 40px; }
-    .video-card { background-color: var(--card-background-color); border-radius: 10px; overflow: hidden; transition: transform 0.3s, box-shadow 0.3s; cursor: pointer; border: 1px solid transparent; }
+    .video-card { background-color: var(--card-background-color); border-radius: 10px; overflow: hidden; transition: transform 0.3s, box-shadow 0.3s; cursor: pointer; border: 1px solid transparent; will-change: transform, box-shadow; }
     .video-card:hover { transform: translateY(-10px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-color: var(--accent-color); }
     .thumbnail-container { 
         position: relative; 
@@ -266,6 +266,19 @@
     .auth-modal .form-group input { width: 100%; padding: 10px; background-color: var(--background-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--primary-text-color); }
     .auth-modal .form-group input:focus { border-color: var(--accent-color); outline: none; }
     .btn-auth { width: 100%; padding: 12px; background-color: var(--accent-color); border: none; border-radius: 8px; color: var(--primary-text-color); font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 10px; }
+    
+    /* Adiciona posicionamento relativo ao container do input */
+    .auth-modal .form-group {
+        position: relative;
+    }
+
+    .password-toggle-icon {
+        position: absolute;
+        bottom: 12px; /* Posição estável a partir de baixo */
+        right: 12px;
+        cursor: pointer;
+        color: var(--secondary-text-color);
+    }
     /* Estilos de Comentários */
     .comment-form { display: flex; align-items: center; gap: 15px; margin: 20px 0; }
     .comment-form img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
@@ -1478,7 +1491,7 @@
         <span>-</span>
         <a href="#" class="support-chat-link">Suporte</a>
         <span>-</span>
-        <span class="version-number">v11.43</span> 
+        <span class="version-number">v11.44</span> 
 
     </div>
 </div> <!-- FIM DO page-wrapper -->
@@ -1555,37 +1568,23 @@
     </div>
 
 <!-- Firebase SDKs (Versão 8 - Necessária para o código atual) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
     <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
         feather.replace();
 
-        // --- CONFIGURAÇÃO SUPABASE (Para Vídeos e Categorias) ---
+        // --- CONFIGURAÇÃO SUPABASE (Constantes Globais) ---
         const SUPABASE_URL = 'https://yxdjmyqkltaqjulfkcuu.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZGpteXFrbHRhcWp1bGZrY3V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA4MjYwMDYsImV4cCI6MjA3NjQwMjAwNn0.z1wvppEflLjG289s5One1ihbfQJjfNfS7svgbAgFGLs';
-        const { createClient } = supabase;
-        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        // --- CONFIGURAÇÃO FIREBASE (Para Autenticação, Likes, Comentários) ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDxAMjX4aVhOIXBpbYD0ENm8WDEUjnTQWM",
-            authDomain: "pixwin-fd0be.firebaseapp.com",
-            databaseURL: "https://pixwin-fd0be-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "pixwin-fd0be",
-            storageBucket: "pixwin-fd0be.appspot.com",
-            messagingSenderId: "588655063887",
-            appId: "1:588655063887:web:d144b395a4a98a904d0b3a"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const fbAuth = firebase.auth();
-        const fbDb = firebase.database();
-        const fbStorage = firebase.storage();
+
+        // --- VARIÁVEIS GLOBAIS DE CONEXÃO (declaradas mas não inicializadas para aguardar o 'defer') ---
+        let _supabase, fbAuth, fbDb, fbStorage;
 
                 // --- VARIÁVEIS GLOBAIS ---
         let allFetchedVideos = [];
@@ -2129,22 +2128,45 @@
             const fullName = form.querySelector('#full-name').value;
             const email = form.querySelector('#signup-email').value;
             const password = form.querySelector('#signup-password').value;
+            const passwordConfirm = form.querySelector('#signup-password-confirm').value;
             const age = parseInt(form.querySelector('#age').value, 10);
-            if (age < 18) { alert("Você precisa ter pelo menos 18 anos."); return; }
+
+            if (password !== passwordConfirm) {
+                alert("As senhas não coincidem. Por favor, tente novamente.");
+                return;
+            }
+            if (age < 18) {
+                alert("Você precisa ter pelo menos 18 anos.");
+                return;
+            }
+
             try {
                 const userCredential = await fbAuth.createUserWithEmailAndPassword(email, password);
                 const user = userCredential.user;
-                await fbDb.ref('profiles/' + user.uid).set({
+
+                // Primeiro, criamos o objeto do novo perfil
+                const newUserProfile = {
                     full_name: fullName,
                     age: age,
                     bio: '',
-                    avatar_url: 'https://i.pinimg.com/236x/55-6e-2e/556e2edc7518c0e5cb4d59aef6729b24.jpg',
-                    creation_timestamp: firebase.database.ServerValue.TIMESTAMP // Adiciona a data de criação
-                });
-                alert("Conta criada! Faça o login para continuar.");
-                switchAuthForm('login');
+                    avatar_url: 'https://yxdjmyqkltaqjulfkcuu.supabase.co/storage/v1/object/public/avatars/public/iYCPry8dBdWV7mMwfMM2yC7jb5n2/images%20(3).jpeg',
+                    creation_timestamp: firebase.database.ServerValue.TIMESTAMP,
+                    pro_status: 'none' // Garante um status inicial
+                };
+
+                // Depois, salvamos no banco de dados
+                await fbDb.ref('profiles/' + user.uid).set(newUserProfile);
+
+                // **A CORREÇÃO ESTÁ AQUI:**
+                // Forçamos a atualização da interface IMEDIATAMENTE com os dados do novo perfil
+                // Isso evita o problema de timing com o auto-login.
+                updateUIAfterLogin({ uid: user.uid, ...newUserProfile });
+                
                 form.reset();
-            } catch (error) { alert("Erro ao criar conta: " + error.message); }
+                closeAuthModal();
+            } catch (error) {
+                alert("Erro ao criar conta: " + error.message);
+            }
         }
         
         async function handleSignIn(event) {
@@ -2156,7 +2178,20 @@
                 await fbAuth.signInWithEmailAndPassword(email, password);
                 form.reset();
                 closeAuthModal();
-            } catch (error) { alert("Erro no login: " + error.message); }
+            } catch (error) {
+                // MENSAGEM DE ERRO PERSONALIZADA (AGORA CORRIGIDA)
+                // Verifica todos os possíveis erros de login e mostra uma única mensagem amigável.
+                if (error.code === 'auth/invalid-credential' || 
+                    error.code === 'auth/wrong-password' || 
+                    error.code === 'auth/user-not-found' ||
+                    error.code === 'auth/invalid-email') {
+                    alert("Email ou senha incorretos.");
+                } else {
+                    // Para qualquer outro erro inesperado, mostra uma mensagem genérica.
+                    alert("Ocorreu um erro durante o login. Tente novamente.");
+                    console.error("Erro de login não tratado:", error); // Loga o erro técnico para o desenvolvedor
+                }
+            }
         }
 
         async function handleLogout() {
@@ -2188,17 +2223,25 @@
             document.getElementById('comment-user-avatar').src = avatarUrl;
         }
 
-        function resetUIToLoggedOut() {
+function resetUIToLoggedOut() {
             currentUserProfile = null;
-            const mainAvatar = document.getElementById('main-user-avatar');
+            const avatarContainer = document.getElementById('main-avatar-container');
+            const loginBtn = document.getElementById('login-prompt-btn');
+            const commentAvatar = document.getElementById('comment-user-avatar');
             const defaultAvatar = 'https://i.pinimg.com/236x/55-6e-2e/556e2edc7518c0e5cb4d59aef6729b24.jpg';
             
-            mainAvatar.style.display = 'none'; // Esconde a imagem
-            mainAvatar.src = ''; // Limpa a URL da imagem
+            avatarContainer.style.display = 'none';
+            document.getElementById('main-user-avatar').src = '';
+            document.getElementById('main-user-avatar').style.border = '2px solid var(--accent-color)';
+            loginBtn.style.display = 'block';
             
-            document.getElementById('comment-user-avatar').src = defaultAvatar;
-            // Desliga o listener de notificações se o usuário deslogar
-            fbDb.ref('notifications').off();
+            commentAvatar.src = defaultAvatar;
+            commentAvatar.classList.remove('pro-avatar-border');
+            
+            // A verificação 'fbDb' impede erro se o usuário deslogar antes de tudo carregar
+            if (fbDb) {
+                fbDb.ref('notifications').off();
+            }
         }
 
         // --- LÓGICA DE NOTIFICAÇÕES ---
@@ -2309,67 +2352,7 @@
             fbDb.ref('notifications').off();
         }
 
-        fbAuth.onAuthStateChanged(async (user) => {
-            // Verifica se o admin quer logar como outro usuário
-            const impersonateUid = localStorage.getItem('admin_impersonate_uid');
-            let effectiveUid = user ? user.uid : null;
-            let isAdminAction = false;
-
-            if (impersonateUid) {
-                effectiveUid = impersonateUid;
-                isAdminAction = true;
-                // Limpa o item para que a próxima atualização da página volte ao normal
-                localStorage.removeItem('admin_impersonate_uid');
-            }
-
-            if (effectiveUid) {
-                const profileRef = fbDb.ref('profiles/' + effectiveUid);
-                profileRef.once('value', (snapshot) => {
-                    let profileData = snapshot.val() || {};
-
-                    if (profileData.status === 'banned') {
-                        alert("Este usuário está banido.");
-                        handleLogout(); // Desloga o admin para evitar confusão
-                        return;
-                    }
-                    
-                    updateUIAfterLogin({ uid: effectiveUid, ...profileData });
-                    listenForPendingPayment(effectiveUid);
-                    listenForUnreadChats(effectiveUid);
-                    
-                    // Só inicia o contador de tempo se não for uma ação do admin
-                    if (!isAdminAction && user) {
-                         if (timeSpentInterval) clearInterval(timeSpentInterval);
-                         timeSpentInterval = setInterval(() => {
-                            const userTimeRef = fbDb.ref(`profiles/${user.uid}/time_spent_minutes`);
-                            userTimeRef.transaction(currentMinutes => (currentMinutes || 0) + 1);
-                        }, 60000);
-                    }
-                    
-                    const lastChecked = profileData.lastCheckedNotifications;
-                    listenForNotifications(lastChecked); 
-                });
-            } else {
-                // Para o contador de tempo quando o usuário desloga
-                if (timeSpentInterval) clearInterval(timeSpentInterval);
-                
-                // Desliga todos os listeners ao deslogar
-                if (proPaymentRef && proPaymentListener) {
-                    proPaymentRef.off('value', proPaymentListener);
-                    proPaymentListener = null;
-                    proPaymentRef = null;
-                }
-                 if (unreadChatsRef && unreadChatsListener) {
-                    unreadChatsRef.off('value', unreadChatsListener);
-                    unreadChatsListener = null;
-                    unreadChatsRef = null;
-                }
-
-                hidePendingPaymentUI();
-                document.getElementById('main-chat-badge').style.display = 'none'; // Esconde o contador de chat
-                resetUIToLoggedOut();
-            }
-        });
+        
 
         function switchAuthForm(formToShow) {
             document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
@@ -2386,15 +2369,15 @@
             document.getElementById('profile-bio-textarea').value = currentUserProfile.bio || '';
             document.getElementById('profile-gender-select').value = currentUserProfile.gender || 'Não informado';
 
-            // Calcula e exibe tempo de conta
+            // Calcula e exibe tempo de conta (COM CORREÇÃO PARA NaN)
             const accountAgeEl = document.getElementById('profile-account-age');
-            if (currentUserProfile.creation_timestamp) {
+            if (currentUserProfile.creation_timestamp && typeof currentUserProfile.creation_timestamp === 'number') {
                 const diff = Date.now() - currentUserProfile.creation_timestamp;
                 const days = Math.floor(diff / (1000 * 60 * 60 * 24));
                 accountAgeEl.textContent = `Membro há ${days} dias`;
             } else {
-                // Adiciona um texto padrão para contas antigas
-                accountAgeEl.textContent = 'Membro veterano';
+                // Se for uma conta nova ou sem timestamp, mostra 0 dias.
+                accountAgeEl.textContent = 'Membro há 0 dias';
             }
 
             // Calcula e exibe tempo de atividade
@@ -3092,7 +3075,8 @@ if (targetElement) {
                         ${proBadge}
                         ${newBadge}
                         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Flag_of_Brazil.svg/330px-Flag_of_Brazil.svg.png" alt="Bandeira do Brasil" class="flag-overlay">
-                        <img src="${video.thumbnail_url}" alt="Thumbnail" class="video-thumbnail-img">
+                        <!-- Otimização: Lazy Loading -->
+                        <img loading="lazy" src="${video.thumbnail_url}" alt="Thumbnail" class="video-thumbnail-img">
                     </div>
                     <div class="recommendation-info">
                         <h4>${video.title}</h4>
@@ -3190,7 +3174,8 @@ if (targetElement) {
                         ${proBadge}
                         ${newBadge}
                         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Flag_of_Brazil.svg/330px-Flag_of_Brazil.svg.png" alt="Bandeira do Brasil" class="flag-overlay">
-                        <img src="${video.thumbnail_url}" alt="Thumbnail do Vídeo" class="video-thumbnail-img">
+                        <!-- Otimização: Lazy Loading -->
+                        <img loading="lazy" src="${video.thumbnail_url}" alt="Thumbnail do Vídeo" class="video-thumbnail-img">
                         <span class="video-duration">${video.duration || '--:--'}</span>
                         <div class="play-icon"><i data-feather="play"></i></div>
                     </div>
@@ -3503,7 +3488,7 @@ if (targetElement) {
 
         async function openMiniProfileModal(userId) {
             if (!userId) return;
-            recipientForNewChat = userId; // Guarda o ID do usuário para o botão de mensagem
+            recipientForNewChat = userId;
             const overlay = document.getElementById('mini-profile-overlay');
             try {
                 const snapshot = await fbDb.ref(`profiles/${userId}`).once('value');
@@ -3511,22 +3496,22 @@ if (targetElement) {
                 const profile = snapshot.val();
 
                 const miniAvatar = document.getElementById('mini-profile-avatar-img');
-                miniAvatar.src = profile.avatar_url || 'https://i.pinimg.com/236x/55-6e-2e/556e2edc7518c0e5cb4d59aef6729b24.jpg';
+                miniAvatar.src = profile.avatar_url || 'https://yxdjmyqkltaqjulfkcuu.supabase.co/storage/v1/object/public/avatars/public/iYCPry8dBdWV7mMwfMM2yC7jb5n2/images%20(3).jpeg';
                 
                 document.getElementById('mini-profile-user-name').textContent = profile.full_name || 'Usuário';
                 document.getElementById('mini-profile-bio').textContent = profile.bio || 'Nenhuma biografia disponível.';
                 document.getElementById('mini-profile-age').textContent = profile.age || '--';
                 document.getElementById('mini-profile-gender').textContent = profile.gender || 'Não informado';
 
-                // Calcula e exibe tempo de conta
+                // Calcula e exibe tempo de conta (COM CORREÇÃO PARA NaN)
                 const accountAgeEl = document.getElementById('mini-profile-account-age');
-                if (profile.creation_timestamp) {
+                if (profile.creation_timestamp && typeof profile.creation_timestamp === 'number') {
                     const diff = Date.now() - profile.creation_timestamp;
                     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
                     accountAgeEl.textContent = `Membro há ${days} dias`;
                 } else {
-                    // Adiciona um texto padrão para contas antigas
-                    accountAgeEl.textContent = 'Membro veterano';
+                    // Se for uma conta nova ou sem timestamp, mostra 0 dias.
+                    accountAgeEl.textContent = 'Membro há 0 dias';
                 }
 
                 // Calcula e exibe tempo de atividade
@@ -3536,7 +3521,6 @@ if (targetElement) {
 
                 const isPro = profile.pro_info?.status === 'active';
                 document.getElementById('mini-profile-pro-badge').style.display = isPro ? 'inline-block' : 'none';
-                // Define a borda dourada para PRO, ou a rosa padrão para os demais
                 miniAvatar.style.borderColor = isPro ? 'gold' : 'var(--accent-color)';
                 
                 overlay.classList.add('active');
@@ -3687,7 +3671,86 @@ if (targetElement) {
         }
 
 
-        document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async () => {
+            // --- INICIALIZAÇÃO DOS SDKs (CORREÇÃO PARA O ERRO 'supabase is not defined') ---
+            // Este código agora roda depois que os scripts 'defer' foram carregados.
+            const { createClient } = supabase;
+            // As constantes SUPABASE_URL e SUPABASE_ANON_KEY agora são globais
+            _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            const firebaseConfig = {
+                apiKey: "AIzaSyDxAMjX4aVhOIXBpbYD0ENm8WDEUjnTQWM",
+                authDomain: "pixwin-fd0be.firebaseapp.com",
+                databaseURL: "https://pixwin-fd0be-default-rtdb.europe-west1.firebasedatabase.app",
+                projectId: "pixwin-fd0be",
+                storageBucket: "pixwin-fd0be.appspot.com",
+                messagingSenderId: "588655063887",
+                appId: "1:588655063887:web:d144b395a4a98a904d0b3a"
+            };
+            firebase.initializeApp(firebaseConfig);
+            fbAuth = firebase.auth();
+            fbDb = firebase.database();
+            fbStorage = firebase.storage();
+            // --- FIM DA INICIALIZAÇÃO ---
+
+            // **LISTENER DE AUTENTICAÇÃO MOVIDO PARA CÁ (CORREÇÃO DEFINITIVA)**
+            fbAuth.onAuthStateChanged(async (user) => {
+                const impersonateUid = localStorage.getItem('admin_impersonate_uid');
+                let effectiveUid = user ? user.uid : null;
+                let isAdminAction = false;
+
+                if (impersonateUid) {
+                    effectiveUid = impersonateUid;
+                    isAdminAction = true;
+                    localStorage.removeItem('admin_impersonate_uid');
+                }
+
+                if (effectiveUid) {
+                    const profileRef = fbDb.ref('profiles/' + effectiveUid);
+                    profileRef.once('value', (snapshot) => {
+                        let profileData = snapshot.val() || {};
+
+                        if (profileData.status === 'banned') {
+                            alert("Este usuário está banido.");
+                            handleLogout();
+                            return;
+                        }
+                        
+                        updateUIAfterLogin({ uid: effectiveUid, ...profileData });
+                        listenForPendingPayment(effectiveUid);
+                        listenForUnreadChats(effectiveUid);
+                        
+                        if (!isAdminAction && user) {
+                             if (timeSpentInterval) clearInterval(timeSpentInterval);
+                             timeSpentInterval = setInterval(() => {
+                                const userTimeRef = fbDb.ref(`profiles/${user.uid}/time_spent_minutes`);
+                                userTimeRef.transaction(currentMinutes => (currentMinutes || 0) + 1);
+                            }, 60000);
+                        }
+                        
+                        const lastChecked = profileData.lastCheckedNotifications;
+                        listenForNotifications(lastChecked); 
+                    });
+                } else {
+                    if (timeSpentInterval) clearInterval(timeSpentInterval);
+                    
+                    if (proPaymentRef && proPaymentListener) {
+                        proPaymentRef.off('value', proPaymentListener);
+                        proPaymentListener = null;
+                        proPaymentRef = null;
+                    }
+                     if (unreadChatsRef && unreadChatsListener) {
+                        unreadChatsRef.off('value', unreadChatsListener);
+                        unreadChatsListener = null;
+                        unreadChatsRef = null;
+                    }
+
+                    hidePendingPaymentUI();
+                    document.getElementById('main-chat-badge').style.display = 'none';
+                    resetUIToLoggedOut();
+                }
+            });
+            
             applyMobileView(); // Aplica a visualização correta ao carregar a página
 
             // Adiciona o listener para o novo botão de login
@@ -3887,6 +3950,25 @@ if (targetElement) {
             document.getElementById('player-close-btn').addEventListener('click', closePlayer);
             
             // Listeners de Autenticação
+            const authModal = document.querySelector('.auth-modal');
+
+            // Listener DELEGADO para o "olhinho" de ver a senha (CORRIGIDO)
+            authModal.addEventListener('click', (event) => {
+                const icon = event.target.closest('.password-toggle-icon');
+                if (!icon) return; // Se o clique não foi no ícone, ignora
+
+                const formGroup = icon.closest('.form-group');
+                const input = formGroup.querySelector('input');
+                
+                const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                input.setAttribute('type', type);
+
+                // Troca o ícone
+                const newIconName = type === 'password' ? 'eye' : 'eye-off';
+                // Substitui o conteúdo SVG do ícone diretamente para evitar problemas
+                icon.innerHTML = feather.icons[newIconName].toSvg();
+            });
+
             document.getElementById('auth-close-btn').addEventListener('click', closeAuthModal);
             document.getElementById('signup-form').addEventListener('submit', handleSignUp);
             document.getElementById('login-form').addEventListener('submit', handleSignIn);
@@ -4294,15 +4376,28 @@ if (targetElement) {
                 <button class="auth-tab-btn active" data-form="login">Fazer Login</button>
                 <button class="auth-tab-btn" data-form="signup">Criar Conta</button>
             </div>
-            <form id="login-form" class="auth-form active">
+<form id="login-form" class="auth-form active">
                 <div class="form-group"><label for="login-email">Email</label><input type="email" id="login-email" required autocomplete="email"></div>
-                <div class="form-group"><label for="login-password">Senha</label><input type="password" id="login-password" required autocomplete="current-password"></div>
+                <div class="form-group">
+                    <label for="login-password">Senha</label>
+                    <input type="password" id="login-password" required autocomplete="current-password">
+                    <i data-feather="eye" class="password-toggle-icon"></i>
+                </div>
                 <button type="submit" class="btn-auth">Entrar</button>
             </form>
             <form id="signup-form" class="auth-form">
                 <div class="form-group"><label for="full-name">Nome*</label><input type="text" id="full-name" required></div>
                 <div class="form-group"><label for="signup-email">Email</label><input type="email" id="signup-email" required autocomplete="email"></div>
-                <div class="form-group"><label for="signup-password">Senha</label><input type="password" id="signup-password" required autocomplete="new-password"></div>
+                <div class="form-group">
+                    <label for="signup-password">Senha</label>
+                    <input type="password" id="signup-password" required autocomplete="new-password">
+                    <i data-feather="eye" class="password-toggle-icon"></i>
+                </div>
+                <div class="form-group">
+                    <label for="signup-password-confirm">Confirme sua senha</label>
+                    <input type="password" id="signup-password-confirm" required autocomplete="new-password">
+                    <i data-feather="eye" class="password-toggle-icon"></i>
+                </div>
                 <div class="form-group"><label for="age">Sua Idade</label><input type="number" id="age" min="18" required placeholder="18 ou mais"></div>
                 <button type="submit" class="btn-auth">Criar Perfil</button>
             </form>
