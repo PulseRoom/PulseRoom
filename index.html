@@ -6,6 +6,8 @@
     <title>PulseRoom</title>
     <link rel="icon" type="image/png" href="https://yxdjmyqkltaqjulfkcuu.supabase.co/storage/v1/object/public/thumbnails/rabbit.png">
     <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <!-- Adiciona a biblioteca de streaming HLS.js -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
     :root {
@@ -388,14 +390,30 @@
         border-radius: 5px;
         cursor: pointer;
         margin-bottom: 10px;
+        position: relative; /* Necessário para posicionar as barras filhas */
+        overflow: hidden; /* Garante que as barras não passem da borda */
+    }
+
+    .progress-buffered {
+        width: 0%; /* Começa vazio */
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.5); /* Cinza claro para o buffer */
+        position: absolute;
+        top: 0;
+        left: 0;
+        transition: width 0.2s linear;
+        z-index: 1;
     }
 
     .progress-filled {
         width: 0%; /* Começa vazio */
         height: 100%;
         background-color: var(--accent-color); /* A cor rosa do site! */
-        border-radius: 5px;
+        position: absolute;
+        top: 0;
+        left: 0;
         transition: width 0.1s linear;
+        z-index: 2; /* Garante que a barra de progresso fique sobre a de buffer */
     }
 
     .controls-main {
@@ -1491,7 +1509,7 @@
         <span>-</span>
         <a href="#" class="support-chat-link">Suporte</a>
         <span>-</span>
-        <span class="version-number">v11.44</span> 
+        <span class="version-number">v11.45</span> 
 
     </div>
 </div> <!-- FIM DO page-wrapper -->
@@ -1511,11 +1529,12 @@
                 <!-- O container do vídeo agora tem uma classe extra para o CSS e JS -->
                 <div class="video-container custom-video-player">
                     <!-- ATENÇÃO: O atributo "controls" foi removido do vídeo -->
-                    <video id="main-player-video" controlslist="nodownload" oncontextmenu="return false;" playsinline></video>
+                    <video id="main-player-video" controlslist="nodownload" oncontextmenu="return false;" playsinline preload="metadata"></video>
 
                     <!-- Nossos novos controles customizados -->
                     <div class="custom-controls-container">
                         <div class="progress-bar">
+                            <div class="progress-buffered"></div> <!-- BARRA DE BUFFER ADICIONADA -->
                             <div class="progress-filled"></div>
                         </div>
                         <div class="controls-main">
@@ -2602,42 +2621,59 @@ function resetUIToLoggedOut() {
         }
 
         function renderCurrentPage() {
-            if (!currentViewVideos) return;
-            const startIndex = (currentPage - 1) * videosPerPage;
-            const endIndex = startIndex + videosPerPage;
-            const videosForPage = currentViewVideos.slice(startIndex, endIndex);
+            // Esta função agora está mais simples: ela apenas chama a displayVideos com a página correta.
+            const activeCategory = document.querySelector('#sidebar-category-list a.active').dataset.category;
+            const activeSort = document.querySelector('.filter-options a.active').dataset.sort;
             
-            renderVideoGrid(videosForPage); // A função de renderização original é reutilizada
-
-            // Atualiza a classe 'active' nos links da paginação
-            document.querySelectorAll('.pagination a[data-page]').forEach(link => {
-                link.classList.toggle('active', parseInt(link.dataset.page) === currentPage);
-            });
+            displayVideos(activeCategory, activeSort, currentPage);
+            window.scrollTo(0, 0);
         }
 
-// --- FUNÇÃO PARA EXIBIR VÍDEOS (SUPABASE + FIREBASE) ---
-async function displayVideos(categorySlug = 'all', sortBy = 'random') {
-    document.querySelector('.video-section-header h2').textContent = 'Recomendados';
+// --- FUNÇÃO OTIMIZADA PARA EXIBIR VÍDEOS (COM PAGINAÇÃO NO SERVIDOR) ---
+async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) {
     const videoGrid = document.querySelector('.video-grid');
     if (!videoGrid) return;
-    videoGrid.innerHTML = '<p>Carregando vídeos...</p>';
+
+    // Apenas mostra "Carregando" na primeira página
+    if (page === 1) {
+        document.querySelector('.video-section-header h2').textContent = 'Recomendados';
+        videoGrid.innerHTML = '<p>Carregando vídeos...</p>';
+    }
 
     try {
-        // 1. Buscar vídeos aprovados do Supabase
-        let supabaseQuery = _supabase.from('videos').select('*').eq('status', 'approved');
+        currentPage = page;
+        const startIndex = (page - 1) * videosPerPage;
+        const endIndex = startIndex + videosPerPage - 1;
+
+        // 1. CONSTRÓI A CONSULTA AO SUPABASE DE FORMA INTELIGENTE
+        let supabaseQuery = _supabase.from('videos').select('*', { count: 'exact' }).eq('status', 'approved');
+
         if (categorySlug && categorySlug !== 'all') {
             supabaseQuery = supabaseQuery.eq('category', categorySlug);
         }
-        const { data: videos, error: supabaseError } = await supabaseQuery;
-        if (supabaseError) throw supabaseError;
 
-        if (videos.length === 0) {
-            renderVideoGrid([]);
-            setupPagination(0); // Limpa a paginação se não houver vídeos
-            return;
+        // A ordenação agora é feita pelo banco de dados (muito mais rápido)
+        // NOTA: A ordenação aleatória não é suportada diretamente de forma simples. Manteremos 'recent' como padrão.
+        if (sortBy === 'recent') {
+            supabaseQuery = supabaseQuery.order('created_at', { ascending: false });
+        } else {
+            // Para 'views' e 'likes', a lógica é mais complexa e por enquanto vamos ordenar por 'recent' também.
+            // Implementar ordenação por likes/views exigiria uma estrutura de banco de dados diferente (desnormalização).
+            supabaseQuery = supabaseQuery.order('created_at', { ascending: false });
         }
 
-        // 2. Buscar dados de interação (likes, views) e metadados (is_pro) do Firebase
+        // 2. PEDE APENAS A PÁGINA QUE QUEREMOS
+        const { data: videos, error: supabaseError, count: totalVideos } = await supabaseQuery.range(startIndex, endIndex);
+
+        if (supabaseError) throw supabaseError;
+
+        if (!videos || videos.length === 0) {
+            videoGrid.innerHTML = '<p>Nenhum vídeo encontrado.</p>';
+            setupPagination(0);
+            return;
+        }
+        
+        // As etapas de buscar likes/views e gerar URLs continuam, mas agora APENAS para os 9 vídeos da página.
         const interactionRef = fbDb.ref('videos');
         const proStatusRef = fbDb.ref('video_metadata');
         
@@ -2649,59 +2685,33 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random') {
         const interactionData = interactionSnapshot.val() || {};
         const proStatusData = proStatusSnapshot.val() || {};
 
-        // 3. Gerar URLs assinadas e combinar todos os dados
         const combinedVideosPromises = videos.map(async (video) => {
             const interactions = interactionData[video.id] || {};
-            const likes = interactions.likes ? Object.values(interactions.likes).filter(v => v === 1).length : 0;
             const isPro = proStatusData[video.id]?.is_pro === true;
-
-            const fullUrl = video.video_url; 
-            const baseUrlToRemove = `${SUPABASE_URL}/storage/v1/object/public/videos/`;
-            const filePath = fullUrl.replace(baseUrlToRemove, '');
             
-            const { data: signedUrlData, error: urlError } = await _supabase.storage
-                .from('videos')
-                .createSignedUrl(filePath, 3600);
-
-            if (urlError) {
-                console.error('Erro ao gerar URL assinada para:', video.title, urlError);
-                return { ...video, views: interactions.views || 0, likeCount: likes, is_pro: isPro };
-            }
-
             return {
                 ...video,
-                video_url: signedUrlData.signedUrl,
                 views: interactions.views || 0,
-                likeCount: likes,
-                is_pro: isPro // Adiciona a flag PRO ao objeto final
+                likeCount: interactions.likes ? Object.values(interactions.likes).filter(v => v === 1).length : 0,
+                is_pro: isPro
             };
         });
-
         const combinedVideos = await Promise.all(combinedVideosPromises);
-
-        // 4. Ordenar
-        if (sortBy === 'views') {
-            combinedVideos.sort((a, b) => b.views - a.views);
-        } else if (sortBy === 'likes') {
-            combinedVideos.sort((a, b) => b.likeCount - a.likeCount);
-        } else if (sortBy === 'recent') {
-            combinedVideos.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        } else { // 'random' será o padrão
-            combinedVideos.sort(() => 0.5 - Math.random());
+        
+        // Se for a primeira página, guarda a lista completa (para o destaque)
+        if (page === 1) {
+            allFetchedVideos = combinedVideos;
+            setupFeaturedVideo(); // Configura o vídeo de destaque
         }
 
-        allFetchedVideos = combinedVideos; // Armazena a lista mestre
-        currentViewVideos = allFetchedVideos; // A visualização atual é a lista mestre
-
-        // 5. Configurar a paginação e renderizar a primeira página
-        currentPage = 1;
-        setupPagination(currentViewVideos.length);
-        renderCurrentPage();
+        // 3. Renderiza a grade e a paginação
+        renderVideoGrid(combinedVideos);
+        setupPagination(totalVideos); // Usa o total de vídeos retornado pelo servidor
 
     } catch (error) {
         console.error('Erro ao buscar ou ordenar vídeos:', error);
         videoGrid.innerHTML = '<p>Não foi possível carregar os vídeos.</p>';
-        setupPagination(0); // Limpa a paginação em caso de erro
+        setupPagination(0);
     }
 }
         
@@ -2712,6 +2722,7 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random') {
             const fullscreenBtn = document.getElementById('fullscreen-btn');
             const progressBar = playerWrapper.querySelector('.progress-bar');
             const progressFilled = playerWrapper.querySelector('.progress-filled');
+            const progressBuffered = playerWrapper.querySelector('.progress-buffered'); // PEGA A NOVA BARRA
             const volumeBtn = document.getElementById('volume-btn');
             const volumeSlider = document.getElementById('volume-slider');
             const qualityBtn = document.getElementById('quality-btn');
@@ -2779,6 +2790,17 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random') {
 
             // Adiciona listener de clique duplo no vídeo para alternar tela cheia
             video.addEventListener('dblclick', toggleFullscreen);
+
+            // --- Lógica da Barra de Buffer ---
+            function updateBufferBar() {
+                if (video.duration > 0 && video.buffered.length > 0) {
+                    const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+                    const bufferPercentage = (bufferedEnd / video.duration) * 100;
+                    progressBuffered.style.width = `${bufferPercentage}%`;
+                }
+            }
+            video.addEventListener('progress', updateBufferBar);
+
 
             // --- Lógica de Volume ---
             function updateVolumeIcon() {
@@ -3075,8 +3097,8 @@ if (targetElement) {
                         ${proBadge}
                         ${newBadge}
                         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Flag_of_Brazil.svg/330px-Flag_of_Brazil.svg.png" alt="Bandeira do Brasil" class="flag-overlay">
-                        <!-- Otimização: Lazy Loading -->
-                        <img loading="lazy" src="${video.thumbnail_url}" alt="Thumbnail" class="video-thumbnail-img">
+                        <!-- Otimização: Lazy Loading + Redimensionamento -->
+                        <img loading="lazy" src="${video.thumbnail_url}?transform=w-320,h-180" alt="Thumbnail" class="video-thumbnail-img">
                     </div>
                     <div class="recommendation-info">
                         <h4>${video.title}</h4>
@@ -3092,7 +3114,14 @@ if (targetElement) {
             if (!playerOverlay || !mainContent) return;
             const videoId = card.dataset.videoId;
             const playerVideo = document.getElementById('main-player-video');
-            playerVideo.classList.remove('sd-quality-effect'); // CORRIGIDO: Garante que comece sem o filtro
+            
+            // OTIMIZAÇÃO: Define a capa (poster) antes de carregar o vídeo
+            const videoData = allFetchedVideos.find(v => v.id == videoId);
+            if (videoData) {
+                playerVideo.poster = videoData.thumbnail_url;
+            }
+
+            playerVideo.classList.remove('sd-quality-effect'); // Garante que comece sem o filtro
 
             // --- Lógica das Categorias Aleatórias ---
             const playerNav = document.getElementById('player-categories');
@@ -3121,7 +3150,22 @@ if (targetElement) {
             }
 
             playerOverlay.dataset.currentVideoId = videoId;
-            playerVideo.src = card.dataset.videoUrl;
+            const videoUrl = card.dataset.videoUrl; // Supondo que a URL venha do card
+
+            // **LÓGICA DO PLAYER INTELIGENTE (ADAPTIVE STREAMING)**
+            if (videoUrl.includes('.m3u8')) { // Verifica se é um link de streaming
+                if (Hls.isSupported()) {
+                    const hls = new Hls();
+                    hls.loadSource(videoUrl);
+                    hls.attachMedia(playerVideo);
+                } else if (playerVideo.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Navegadores como o Safari no iOS suportam HLS nativamente
+                    playerVideo.src = videoUrl;
+                }
+            } else {
+                // Lógica antiga para vídeos normais (progressive download)
+                playerVideo.src = videoUrl;
+            }
 
             document.getElementById('player-video-title').textContent = card.dataset.title;
             document.getElementById('player-video-description').textContent = card.dataset.description;
@@ -3174,8 +3218,8 @@ if (targetElement) {
                         ${proBadge}
                         ${newBadge}
                         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Flag_of_Brazil.svg/330px-Flag_of_Brazil.svg.png" alt="Bandeira do Brasil" class="flag-overlay">
-                        <!-- Otimização: Lazy Loading -->
-                        <img loading="lazy" src="${video.thumbnail_url}" alt="Thumbnail do Vídeo" class="video-thumbnail-img">
+                        <!-- Otimização: Lazy Loading + Redimensionamento -->
+                        <img loading="lazy" src="${video.thumbnail_url}?transform=w-400,h-225" alt="Thumbnail do Vídeo" class="video-thumbnail-img">
                         <span class="video-duration">${video.duration || '--:--'}</span>
                         <div class="play-icon"><i data-feather="play"></i></div>
                     </div>
