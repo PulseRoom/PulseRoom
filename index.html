@@ -1241,6 +1241,8 @@
         object-fit: contain; /* ESSENCIAL: Mantém a proporção do vídeo, sem cortar nada */
         max-width: 100%;
         max-height: 100%;
+        /* CORREÇÃO PARA A TELA VERDE: Força a aceleração de hardware em uma nova camada */
+        transform: translateZ(0);
     }
     
     /* Posiciona os detalhes e comentários ABAIXO do vídeo (visível ao rolar) */
@@ -1365,6 +1367,10 @@
         .footer-links-wrapper span {
             margin: 0 10px;
         }
+        .footer-links-wrapper .version-number {
+            color: var(--border-color); /* Cor mais sutil para diferenciar dos links */
+            cursor: default;
+        }
     </style>
 
     <footer class="footer-info-container">
@@ -1466,6 +1472,8 @@
         <a href="#termos">Termos & Privacidade</a>
         <span>-</span>
         <a href="#" class="support-chat-link">Suporte</a>
+        <span>-</span>
+        <span class="version-number">v11.42</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -1484,7 +1492,7 @@
                 <!-- O container do vídeo agora tem uma classe extra para o CSS e JS -->
                 <div class="video-container custom-video-player">
                     <!-- ATENÇÃO: O atributo "controls" foi removido do vídeo -->
-                    <video id="main-player-video" controlslist="nodownload" oncontextmenu="return false;"></video>
+                    <video id="main-player-video" controlslist="nodownload" oncontextmenu="return false;" playsinline></video>
 
                     <!-- Nossos novos controles customizados -->
                     <div class="custom-controls-container">
