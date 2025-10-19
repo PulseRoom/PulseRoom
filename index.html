@@ -500,11 +500,16 @@
         background-color: gold; color: #333; font-weight: 600;
         font-size: 0.7rem; padding: 1px 6px; border-radius: 8px;
     }
-    /* Efeito para simular qualidade SD */
+    /* Efeito para simular qualidade SD (agora mais sutil) */
     .sd-quality-effect {
-        filter: blur(1.5px) contrast(0.9);
+        filter: blur(0.6px) contrast(0.9);
     }
     /* --- Fim dos Estilos do Player Customizado --- */
+
+    /* CORREÇÃO GLOBAL PARA TELA VERDE: Força a renderização em uma camada separada */
+    video#main-player-video {
+        transform: translateZ(0);
+    }
 
     /* --- Estilos da Animação do Coelho Promocional --- */
     #promo-rabbit-container {
@@ -1463,7 +1468,7 @@
     </footer>
     <!-- FIM DA SEÇÃO DE INFORMAÇÕES DO RODAPÉ -->
 
-    <!-- OS LINKS AGORA FICAM EM UM WRAPPER SEPARADO E SEMPRE VISÍVEL -->
+    <!-- OS LINKS AGORA FICAM EM UM WRA 2805 PPER SEPARADO E SEMPRE VISÍVEL -->
     <div class="footer-links-wrapper">
         <a href="#faq">FAQ</a>
         <span>-</span>
@@ -1473,7 +1478,8 @@
         <span>-</span>
         <a href="#" class="support-chat-link">Suporte</a>
         <span>-</span>
-        <span class="version-number">v11.42</span>
+        <span class="version-number">v11.43</span> 
+
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
