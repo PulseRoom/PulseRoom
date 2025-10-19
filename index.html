@@ -13,7 +13,11 @@
         --accent-color: #FFC0CB; --card-background-color: #1a1a1a; --hover-color: #262626; --border-color: #333333;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-    body { background-color: var(--background-color); color: var(--primary-text-color); display: flex; }
+    body { background-color: var(--background-color); color: var(--primary-text-color); }
+
+    body {
+        display: flex;
+    }
     .sidebar { width: 240px; background-color: var(--background-color); border-right: 1px solid var(--border-color); padding: 20px; height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; transition: width 0.3s ease; }
     .sidebar:hover { width: 260px; }
     .logo { display: flex; align-items: center; gap: 10px; font-size: 1.5rem; font-weight: 600; color: var(--accent-color); margin-bottom: 40px; padding: 10px 0; }
@@ -54,125 +58,7 @@
         scrollbar-color: var(--border-color) transparent;
     }
 
-    /* --- ESTILOS RESPONSIVOS E MOBILE --- */
-    .mobile-header-items { display: none; } /* Escondido por padrão */
-
-    /* Regras que forçam a visualização de desktop, mesmo em telas pequenas, quando a classe .desktop-view está no body */
-    @media (max-width: 768px) {
-        body.desktop-view .sidebar {
-            transform: translateX(0) !important;
-            position: fixed !important;
-        }
-        body.desktop-view .page-wrapper {
-            margin-left: 240px !important;
-            width: calc(100% - 240px) !important;
-        }
-        body.desktop-view .mobile-header-items {
-            display: none !important;
-        }
-        body.desktop-view .header {
-            flex-wrap: nowrap !important;
-        }
-        body.desktop-view .search-bar {
-            order: 0 !important;
-            width: auto !important;
-            margin-top: 0 !important;
-        }
-        body.desktop-view .search-bar input {
-             width: 300px !important;
-        }
-         body.desktop-view .user-profile {
-            margin-left: 0 !important;
-        }
-    }
-
-
-    /* Media Query para telas de até 768px (Tablets e Celulares) */
-    @media (max-width: 768px) {
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            z-index: 1001;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease-in-out;
-        }
-        .sidebar.active {
-            transform: translateX(0);
-        }
-        .sidebar:hover {
-            width: 240px; /* Desativa o efeito de hover no mobile */
-        }
-        
-        .page-wrapper {
-            width: 100%;
-            margin-left: 0;
-        }
-
-        .header {
-            flex-wrap: wrap;
-            padding: 10px;
-        }
-
-        .mobile-header-items {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        #mobile-menu-btn { cursor: pointer; }
-
-        .search-bar { order: 3; width: 100%; margin-top: 10px; }
-        .search-bar input, .search-bar input:focus { width: 100%; }
-        
-        .user-profile {
-            margin-left: auto; /* Empurra os ícones para a direita */
-        }
-
-        .featured-mural {
-            height: 300px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        .featured-mural h1 { font-size: 2rem; }
-        .featured-mural p { font-size: 1rem; max-width: 90%; }
-
-        .video-section-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 15px;
-        }
-        .filter-options {
-            margin-left: 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-         .filter-options a { margin-left: 0; }
-        
-        .player-wrapper {
-            grid-template-columns: 1fr;
-            padding: 10px;
-            margin: 10px auto;
-        }
-        .player-header {
-            flex-direction: column;
-            gap: 15px;
-            position: static;
-        }
-        .player-categories a { margin: 0 8px; }
-
-        #chat-container {
-            flex-direction: column;
-            width: 100%;
-            height: 100%;
-            max-width: 100%;
-            max-height: 100%;
-            border-radius: 0;
-        }
-        #chat-list-sidebar { width: 100%; height: 40%; min-width: 100%; border-right: none; border-bottom: 1px solid var(--border-color); }
-        #chat-window-main { width: 100%; height: 60%; }
-        .chat-list-item.active { display: none; }
-    }
+    
     .page-wrapper {
         width: calc(100% - 240px);
         margin-left: 240px;
@@ -200,6 +86,7 @@
         margin-bottom: 30px;
         animation: fadeIn 1s ease-in-out;
         transition: background-image 0.5s ease-in-out; /* Adiciona uma transição suave para a nova imagem */
+        position: relative; /* Necessário para o overlay */
     }
     .featured-mural h1 { font-size: 3rem; font-weight: 700; margin-bottom: 10px; }
     .featured-mural p { font-size: 1.2rem; max-width: 60%; margin-bottom: 20px; }
@@ -215,25 +102,18 @@
         gap: 20px;
     }
     .pagination { display: flex; justify-content: center; align-items: center; margin-top: 40px; }
-    
-    @media (max-width: 1024px) {
-        .video-grid {
-            grid-template-columns: repeat(2, 1fr); /* 2 colunas para tablets */
-        }
-    }
-
-    @media (max-width: 768px) {
-        .video-grid {
-            grid-template-columns: 1fr; /* 1 coluna para celulares */
-        }
-    }
     .video-card { background-color: var(--card-background-color); border-radius: 10px; overflow: hidden; transition: transform 0.3s, box-shadow 0.3s; cursor: pointer; border: 1px solid transparent; }
     .video-card:hover { transform: translateY(-10px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-color: var(--accent-color); }
-    .thumbnail-container { position: relative; }
+    .thumbnail-container { 
+        position: relative; 
+        width: 100%;
+        aspect-ratio: 16 / 9; /* Proporção widescreen para a miniatura */
+        background-color: var(--hover-color); /* Fundo enquanto a imagem carrega */
+    }
     /* O seletor agora é específico para a miniatura, ignorando overlays */
     .thumbnail-container > img:not(.flag-overlay):not(.pro-badge-overlay) {
         width: 100%;
-        height: 160px;
+        height: 100%; /* Imagem preenche 100% do container que agora tem aspect-ratio */
         object-fit: cover;
         display: block;
     }
@@ -289,35 +169,26 @@
     .player-categories a { color: var(--secondary-text-color); text-decoration: none; margin: 0 15px; font-weight: 500; transition: color 0.3s; }
     .player-categories a:hover { color: var(--primary-text-color); }
     .player-close-btn { position: static; background-color: var(--hover-color); border-radius: 8px; width: auto; height: auto; padding: 8px 15px; display: flex; gap: 8px; cursor: pointer; border: none; color: var(--primary-text-color); font-size: 1rem; }
-    .player-wrapper { display: grid; grid-template-columns: 1fr; max-width: 1400px; margin: 20px auto; padding: 20px; gap: 30px; }
-    @media (min-width: 1024px) { .player-wrapper { grid-template-columns: 2.5fr 1fr; } }
-    .video-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background-color: #000; /* Define o fundo preto para as bordas */
-        border-radius: 10px; /* Aplica o arredondamento ao container */
-        overflow: hidden; /* Garante que o vídeo dentro não vaze */
-    }
-    /* O container agora é um flexbox para centralizar o vídeo */
+    .player-wrapper { display: grid; grid-template-columns: 2.5fr 1fr; max-width: 1400px; margin: 20px auto; padding: 20px; gap: 30px; }
     .video-container {
         display: flex;
         justify-content: center;
         align-items: center;
         background-color: #000;
         border-radius: 10px;
+        overflow: hidden;
+        /* Define uma altura máxima para o container não ficar gigante em telas altas */
+        max-height: 85vh; 
+        height: 100%; /* Tenta ocupar a altura do grid */
     }
-    /* O vídeo por padrão */
+
     .video-container video {
-        width: 100%;
-        height: auto;
+        /* Essas propriedades garantem que o vídeo caiba perfeitamente no container,
+           seja ele vertical ou horizontal, sem distorcer ou cortar. */
+        max-width: 100%;
         max-height: 100%;
+        object-fit: contain; 
         border-radius: 10px;
-    }
-    /* A classe que o JS adiciona para vídeos na vertical */
-    .video-container video.vertical-video {
-        width: auto;
-        height: 100%;
     }
     .video-player-details { padding: 20px 0; border-bottom: 1px solid var(--border-color); }
     .video-player-details h2 { font-size: 1.8rem; margin-bottom: 10px; }
@@ -988,6 +859,7 @@
         padding: 15px 20px;
         background-color: var(--card-background-color);
         border-bottom: 1px solid var(--border-color);
+        position: relative; /* Adicionado para contexto do botão de voltar */
     }
     #chat-window-header img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
     #chat-window-header span { font-weight: 600; }
@@ -1097,9 +969,8 @@
     <div class="page-wrapper">
         <main class="main-content">
             <header class="header">
-            <div class="mobile-header-items">
-                <i data-feather="menu" id="mobile-menu-btn"></i>
-            </div>
+            <!-- BOTÃO DO MENU HAMBÚRGUER (SÓ APARECE NO MOBILE) -->
+            <i data-feather="menu" id="mobile-menu-btn" style="cursor: pointer;"></i>
             <div class="search-bar">
                 <input type="text" placeholder="Buscar vídeos...">
                 <i data-feather="search"></i>
@@ -1127,8 +998,8 @@
                 <!-- ESTE É O BOTÃO CORRETO: Apenas o ícone que abre a janela de upload para o usuário -->
                 <i data-feather="upload-cloud" id="open-upload-modal-btn" style="cursor: pointer;" title="Enviar Vídeo"></i>
                 
-                <!-- NOVO BOTÃO PARA ALTERNAR VISUALIZAÇÃO -->
-                <i data-feather="monitor" id="view-switch-btn" style="cursor: pointer;" title="Alterar para Visualização Mobile"></i>
+                <!-- BOTÃO DE VISUALIZAÇÃO MÓVEL ADICIONADO -->
+                <i data-feather="smartphone" id="mobile-toggle-btn" style="cursor: pointer;" title="Alternar Visualização Móvel"></i>
                 
                 <button id="login-prompt-btn">Login</button>
                 <div id="main-avatar-container" style="position: relative; display: none;">
@@ -1160,6 +1031,287 @@
             </nav>
         </section>
     </main>
+
+    <style>
+    /* --- Estilos do Menu Mobile dedicado --- */
+    #mobile-menu-btn {
+        display: none; /* Escondido por padrão */
+    }
+    .mobile-view #mobile-menu-btn {
+        display: block; /* Visível apenas na visualização móvel */
+    }
+
+    .mobile-menu-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--background-color);
+        z-index: 2500;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        transform: translateX(-100%);
+        transition: transform 0.4s ease-in-out;
+    }
+    .mobile-menu-overlay.active {
+        transform: translateX(0);
+    }
+    #mobile-menu-close-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: none;
+        border: none;
+        color: var(--secondary-text-color);
+        font-size: 2.5rem;
+        cursor: pointer;
+    }
+    #mobile-menu-content {
+        margin-top: 60px; /* Espaço para o botão de fechar */
+        width: 100%;
+        overflow-y: auto;
+    }
+    /* Estilos para os itens clonados dentro do menu mobile */
+    #mobile-menu-content .logo {
+        justify-content: center; /* Centraliza o logo */
+        font-size: 2rem;
+        margin-bottom: 30px;
+    }
+    #mobile-menu-content .nav-menu a {
+        justify-content: center;
+        padding: 20px 10px;
+        font-size: 1.2rem;
+    }
+    #mobile-menu-content .categories {
+        text-align: center;
+        margin-top: 20px;
+    }
+    #mobile-menu-content .categories h3 {
+        font-size: 1.3rem;
+    }
+    #mobile-menu-content .categories ul li a {
+        padding: 15px 10px;
+        font-size: 1.1rem;
+    }
+
+
+    /* --- Estilos para a Visualização Móvel --- */
+    .mobile-view .sidebar {
+        width: 0;
+        padding: 0;
+        overflow: hidden; /* Esconde o conteúdo da sidebar */
+        border-right: none;
+    }
+    .mobile-view .sidebar:hover {
+        width: 0; /* Impede o hover de expandir */
+    }
+    .mobile-view .page-wrapper {
+        width: 100%;
+        margin-left: 0;
+    }
+    .mobile-view .footer-links-wrapper {
+        margin-left: 0;
+    }
+    .mobile-view .main-content {
+        padding: 10px;
+    }
+    .mobile-view .header {
+        flex-wrap: wrap; /* Permite que a barra de busca vá para baixo */
+        gap: 10px;
+    }
+    .mobile-view .search-bar {
+        width: 100%;
+        order: 3; /* Faz a barra de busca ir para a última posição */
+    }
+    .mobile-view .search-bar input,
+    .mobile-view .search-bar input:focus {
+        width: 100%; /* Ocupa toda a largura disponível */
+    }
+    .mobile-view .featured-mural {
+        height: 250px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .mobile-view .featured-mural h1 {
+        font-size: 1.8rem;
+    }
+    .mobile-view .featured-mural p {
+        max-width: 100%;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+    .mobile-view .video-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    .mobile-view .filter-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-left: 0;
+    }
+    .mobile-view .filter-options a {
+        margin-left: 0;
+    }
+    .mobile-view .video-grid {
+        grid-template-columns: repeat(3, 1fr); /* TRÊS colunas */
+        gap: 10px; /* Reduz o espaçamento */
+    }
+
+    /* Ajustes de fonte e espaçamento para os cards menores no mobile */
+    .mobile-view .video-card .video-info {
+        padding: 10px; /* Reduz o padding interno */
+    }
+
+    .mobile-view .video-card .video-info h4 {
+        font-size: 0.8rem; /* Diminui a fonte do título */
+        margin-bottom: 5px;
+    }
+
+    .mobile-view .video-card .video-meta {
+        font-size: 0.7rem; /* Diminui a fonte dos ícones */
+        gap: 8px;
+    }
+    
+    .mobile-view .video-card .video-meta i {
+        width: 12px; /* Diminui o tamanho dos ícones */
+    }
+
+    .mobile-view .video-card .video-category {
+        font-size: 0.6rem; /* Diminui a tag de categoria */
+        padding: 1px 5px;
+        margin-top: 5px;
+    }
+    
+    /* Ajusta o tamanho dos badges PRO e NOVO para a nova grade */
+    .mobile-view .video-card .pro-badge-overlay,
+    .mobile-view .video-card .new-badge-overlay {
+        font-size: 0.6rem;
+        padding: 1px 5px;
+        top: 5px;
+        left: 5px;
+    }
+    .mobile-view .video-card .new-badge-overlay {
+        bottom: 5px;
+        top: auto; /* Garante que a propriedade top não interfira */
+    }
+    .mobile-view .pagination a {
+        padding: 8px 12px;
+        margin: 0 3px;
+    }
+    /* Player de Vídeo - MODO IMERSIVO MOBILE */
+    .mobile-view .video-player-overlay {
+        padding: 0;
+        background-color: #000; /* Fundo preto para a experiência imersiva */
+    }
+    .mobile-view .player-wrapper {
+        display: block; /* Remove o grid para empilhar o conteúdo */
+        padding: 0;
+        max-width: 100%;
+        gap: 0;
+    }
+    .mobile-view .player-header {
+        position: absolute; /* Coloca o header SOBRE o vídeo */
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent); /* Fundo suave */
+        border-bottom: none;
+        padding: 15px;
+    }
+    .mobile-view .player-categories {
+        display: none;
+    }
+    .mobile-view .video-container {
+        width: 100vw; /* Largura total da tela */
+        height: 100vh; /* Altura total da tela */
+        max-height: 100vh; /* Garante que ocupe a tela toda */
+        border-radius: 0;
+        background-color: #000; /* Garante fundo preto se o vídeo demorar a carregar */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .mobile-view .video-container video {
+        border-radius: 0;
+        object-fit: contain; /* ESSENCIAL: Mantém a proporção do vídeo, sem cortar nada */
+        max-width: 100%;
+        max-height: 100%;
+    }
+    
+    /* Posiciona os detalhes e comentários ABAIXO do vídeo (visível ao rolar) */
+    .mobile-view .video-player-details,
+    .mobile-view .video-actions,
+    .mobile-view .video-comments,
+    .mobile-view .player-sidebar {
+        padding: 20px; /* Adiciona um respiro para o conteúdo abaixo do vídeo */
+    }
+
+    .mobile-view .controls-left, .mobile-view .controls-right {
+        gap: 8px;
+    }
+    .mobile-view .control-btn i {
+        width: 20px;
+        height: 20px;
+    }
+    /* Modais (Auth, Profile, Subscription, Upload) */
+    .mobile-view .auth-modal,
+    .mobile-view .profile-modal,
+    .mobile-view .subscription-modal {
+        width: 95%;
+        max-height: 95vh;
+        padding: 20px;
+    }
+    /* Chat */
+    .mobile-view #chat-overlay.active {
+        align-items: flex-start; /* Alinha no topo */
+    }
+    .mobile-view #chat-container {
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+    }
+    .mobile-view #chat-list-sidebar {
+        width: 100%;
+        display: flex; /* Começa visível */
+    }
+    .mobile-view #chat-window-main {
+        display: none; /* Começa escondida */
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: var(--card-background-color);
+        z-index: 10;
+    }
+    .mobile-view #chat-window-header {
+        gap: 10px; /* Adjust gap */
+    }
+    .mobile-view #chat-back-btn {
+        display: flex !important; /* Make it visible in mobile view */
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        padding-right: 10px;
+    }
+    /* Footer */
+    .mobile-view .footer-info-container {
+        padding: 10px;
+    }
+    .mobile-view .footer-info-container h2 {
+        font-size: 1.5rem;
+    }
+    .mobile-view .footer-info-container h3 {
+        font-size: 1.2rem;
+    }
+</style>
     
     <!-- INÍCIO DA SEÇÃO DE INFORMAÇÕES DO RODAPÉ (AGORA FORA DO MAIN-CONTENT) -->
     <style>
@@ -1470,6 +1622,13 @@
             if (chatListRef) { // Agora o chatListRef usa múltiplos listeners
                 chatListRef.off();
             }
+
+            // Garante que a visualização do chat seja redefinida para o modo móvel
+            if (document.body.classList.contains('mobile-view')) {
+                document.getElementById('chat-list-sidebar').style.display = 'flex';
+                document.getElementById('chat-window-main').style.display = 'none';
+            }
+
             activeChatId = null;
             chatMessageListener = null;
             chatMessageRef = null;
@@ -1593,11 +1752,18 @@
             });
 
             // O listener 'loadUserConversations' vai cuidar de remover o emblema da UI automaticamente.
-
-            // Atualiza UI da janela de chat
             document.querySelectorAll('.chat-list-item').forEach(item => item.classList.toggle('active', item.dataset.chatId === chatId));
-            document.getElementById('chat-welcome-screen').style.display = 'none';
-            document.getElementById('active-chat-window').style.display = 'flex';
+
+            if (document.body.classList.contains('mobile-view')) {
+                // No modo móvel, esconde a lista e mostra a janela de chat
+                document.getElementById('chat-list-sidebar').style.display = 'none';
+                document.getElementById('chat-window-main').style.display = 'flex';
+                document.getElementById('active-chat-window').style.display = 'flex';
+            } else {
+                // No modo desktop, mostra a janela de chat ao lado da lista
+                document.getElementById('chat-welcome-screen').style.display = 'none';
+                document.getElementById('active-chat-window').style.display = 'flex';
+            }
             
             const messagesDiv = document.getElementById('chat-messages');
             messagesDiv.innerHTML = '';
@@ -2574,10 +2740,29 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random') {
                 video.currentTime = scrubTime;
             }
 
+            // Função auxiliar para detectar dispositivos móveis
+            function isMobileDevice() {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            }
+
             function toggleFullscreen() {
-                if (!document.fullscreenElement) {
-                    playerWrapper.requestFullscreen().catch(err => alert(`Erro: ${err.message}`));
-                } else { document.exitFullscreen(); }
+                // Se for um dispositivo móvel e o método nativo do webkit existir (muito comum no iOS e outros)
+                if (isMobileDevice() && typeof video.webkitEnterFullscreen === 'function') {
+                    video.webkitEnterFullscreen();
+                } 
+                // Lógica padrão para desktops
+                else {
+                    if (!document.fullscreenElement) {
+                        playerWrapper.requestFullscreen().catch(err => {
+                            // Não mostra mais o alert, apenas loga no console para não incomodar o usuário
+                            console.error("Erro ao entrar em tela cheia:", err.message);
+                        });
+                    } else {
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen();
+                        }
+                    }
+                }
             }
             
             function updateFullscreenIcon() {
@@ -2937,18 +3122,8 @@ if (targetElement) {
                 fbDb.ref(`profiles/${currentUserProfile.uid}/history/${videoId}`).set(firebase.database.ServerValue.TIMESTAMP);
             }
 
-            // Limpa a classe de orientação de vídeos anteriores
-            playerVideo.classList.remove('vertical-video');
-            
             playerOverlay.dataset.currentVideoId = videoId;
             playerVideo.src = card.dataset.videoUrl;
-            
-            // Adiciona um listener que executa UMA VEZ para verificar as dimensões do vídeo
-            playerVideo.addEventListener('loadedmetadata', () => {
-                const isVertical = playerVideo.videoHeight > playerVideo.videoWidth;
-                // Adiciona ou remove a classe com base na orientação
-                playerVideo.classList.toggle('vertical-video', isVertical);
-            }, { once: true });
 
             document.getElementById('player-video-title').textContent = card.dataset.title;
             document.getElementById('player-video-description').textContent = card.dataset.description;
@@ -3452,12 +3627,61 @@ if (targetElement) {
         }
 
 
+        // --- FUNÇÕES DE VISUALIZAÇÃO MÓVEL ---
+        function applyMobileView() {
+            if (localStorage.getItem('mobileViewEnabled') === 'true') {
+                document.body.classList.add('mobile-view');
+            } else {
+                document.body.classList.remove('mobile-view');
+            }
+        }
+
+        function toggleMobileView() {
+            const isMobileView = document.body.classList.contains('mobile-view');
+            if (isMobileView) {
+                localStorage.setItem('mobileViewEnabled', 'false');
+            } else {
+                localStorage.setItem('mobileViewEnabled', 'true');
+            }
+            window.location.reload();
+        }
+
+
+        // --- FUNÇÕES DO MENU MOBILE DEDICADO ---
+        function populateMobileMenu() {
+            const sidebarLogo = document.querySelector('.sidebar .logo');
+            const sidebarNav = document.querySelector('.sidebar .nav-menu');
+            const sidebarCategories = document.querySelector('.sidebar .categories');
+            const mobileMenuContent = document.getElementById('mobile-menu-content');
+
+            if (sidebarLogo && sidebarNav && sidebarCategories && mobileMenuContent) {
+                // Clona os elementos para não removê-los do sidebar original
+                mobileMenuContent.appendChild(sidebarLogo.cloneNode(true));
+                mobileMenuContent.appendChild(sidebarNav.cloneNode(true));
+                mobileMenuContent.appendChild(sidebarCategories.cloneNode(true));
+            }
+        }
+
+        function openMobileMenu() {
+            document.getElementById('mobile-menu-overlay').classList.add('active');
+            document.body.classList.add('body-no-scroll');
+        }
+
+        function closeMobileMenu() {
+            document.getElementById('mobile-menu-overlay').classList.remove('active');
+            document.body.classList.remove('body-no-scroll');
+        }
+
+
         document.addEventListener('DOMContentLoaded', async () => {
+            applyMobileView(); // Aplica a visualização correta ao carregar a página
+
             // Adiciona o listener para o novo botão de login
             document.getElementById('login-prompt-btn').addEventListener('click', openAuthModal);
             
             // Carrega dependências visuais e configura todos os event listeners primeiro
             await fetchAndDisplayCategories(); 
+            populateMobileMenu(); // <<-- MOVIDO PARA DEPOIS DE CARREGAR AS CATEGORIAS
             setupEventListeners(); 
 
             // --- LÓGICA DO MODAL DE UPLOAD DO USUÁRIO ---
@@ -3654,36 +3878,7 @@ if (targetElement) {
             document.getElementById('login-form').addEventListener('submit', handleSignIn);
             document.querySelectorAll('.auth-tab-btn').forEach(btn => btn.addEventListener('click', () => switchAuthForm(btn.dataset.form)));
             
-            // --- LÓGICA DO SELETOR DE VISUALIZAÇÃO (VERSÃO CORRIGIDA E FINAL) ---
-            const viewSwitchBtn = document.getElementById('view-switch-btn');
             
-            function applyViewPreference(view) {
-                const body = document.body;
-                if (view === 'desktop') {
-                    body.classList.add('desktop-view');
-                    // Na visão desktop, o ícone é um celular (para VOLTAR ao mobile)
-                    viewSwitchBtn.setAttribute('data-feather', 'smartphone');
-                    viewSwitchBtn.title = "Alterar para Visualização Mobile";
-                    localStorage.setItem('view_preference', 'desktop');
-                } else { // mobile ou padrão
-                    body.classList.remove('desktop-view');
-                    // Na visão mobile, o ícone é um monitor (para IR para o desktop)
-                    viewSwitchBtn.setAttribute('data-feather', 'monitor');
-                    viewSwitchBtn.title = "Alterar para Visualização Desktop";
-                    localStorage.setItem('view_preference', 'mobile');
-                }
-                feather.replace(); // Essencial para renderizar o novo ícone
-            }
-
-            viewSwitchBtn.addEventListener('click', () => {
-                const currentPreference = localStorage.getItem('view_preference') || 'mobile';
-                const newPreference = currentPreference === 'mobile' ? 'desktop' : 'mobile';
-                applyViewPreference(newPreference);
-            });
-
-            // Aplica a preferência salva ao carregar a página
-            const savedPreference = localStorage.getItem('view_preference');
-            applyViewPreference(savedPreference || 'mobile');
             
             // Listener de Perfil (Avatar Principal)
             document.getElementById('main-user-avatar').addEventListener('click', () => {
@@ -3721,6 +3916,90 @@ if (targetElement) {
             document.getElementById('open-chat-btn').addEventListener('click', openChatOverlay);
             document.getElementById('chat-close-btn').addEventListener('click', closeChatOverlay);
             document.getElementById('chat-input-form').addEventListener('submit', handleSendMessage);
+            
+            // Listener do botão de alternar visualização móvel
+            document.getElementById('mobile-toggle-btn').addEventListener('click', toggleMobileView);
+
+            // Listeners do Menu Mobile Dedicado
+            document.getElementById('mobile-menu-btn').addEventListener('click', openMobileMenu);
+            document.getElementById('mobile-menu-close-btn').addEventListener('click', closeMobileMenu);
+            
+            // Listener de clique para o CONTEÚDO do menu mobile que executa as funções corretas
+            document.getElementById('mobile-menu-content').addEventListener('click', (event) => {
+                const link = event.target.closest('a');
+                const logo = event.target.closest('.logo');
+                const mainContent = document.querySelector('.main-content');
+                const footerInfo = document.querySelector('.footer-info-container');
+
+                // Se não clicou em um link ou no logo, não faz nada
+                if (!link && !logo) return;
+
+                event.preventDefault(); // Previne o comportamento padrão do link
+
+                // Função interna para ativar o link correto no menu de navegação
+                function setActiveNav(buttonId) {
+                    // Primeiro, remove a classe 'active' de todos os links no menu mobile
+                    document.querySelectorAll('#mobile-menu-content .nav-menu a').forEach(a => a.classList.remove('active'));
+                    // Depois, adiciona a classe ao link que foi clicado
+                    if (buttonId) {
+                        const activeLink = document.querySelector(`#mobile-menu-content #${buttonId}`);
+                        if (activeLink) activeLink.classList.add('active');
+                    }
+                }
+
+                if (logo || (link && link.id === 'home-btn')) {
+                    goToHome(event);
+                } else if (link && link.id === 'explore-btn') {
+                    mainContent.style.display = 'block';
+                    footerInfo.style.display = 'none';
+                    setActiveNav('explore-btn');
+                    if (allFetchedVideos.length > 0) {
+                        const randomVideo = allFetchedVideos[Math.floor(Math.random() * allFetchedVideos.length)];
+                        tryToOpenVideo(randomVideo.id);
+                    }
+                } else if (link && link.id === 'liked-videos-btn') {
+                    mainContent.style.display = 'block';
+                    footerInfo.style.display = 'none';
+                    setActiveNav('liked-videos-btn');
+                    displayLikedVideos();
+                } else if (link && link.id === 'history-btn') {
+                    mainContent.style.display = 'block';
+                    footerInfo.style.display = 'none';
+                    setActiveNav('history-btn');
+                    displayHistory();
+                } else if (link && link.id === 'subscriptions-btn') {
+                    if (currentUserProfile) {
+                        if (currentUserProfile.pro_info?.status === 'active') {
+                            alert('Você já faz parte do plano PRO!');
+                        } else {
+                            openSubscriptionModal();
+                        }
+                    } else {
+                        openAuthModal();
+                    }
+                } else if (link && link.dataset.category) {
+                    mainContent.style.display = 'block';
+                    footerInfo.style.display = 'none';
+                    const category = link.dataset.category;
+                    const activeSort = document.querySelector('.filter-options a.active').dataset.sort;
+                    displayVideos(category, activeSort);
+                }
+
+                // Fecha o menu após qualquer ação
+                closeMobileMenu();
+            });
+
+            // Listener para o botão de voltar no chat móvel
+            document.getElementById('chat-back-btn').addEventListener('click', () => {
+                if (document.body.classList.contains('mobile-view')) {
+                    document.getElementById('chat-list-sidebar').style.display = 'flex';
+                    document.getElementById('chat-window-main').style.display = 'none';
+                    if (chatMessageRef && chatMessageListener) {
+                        chatMessageRef.off('child_added', chatMessageListener);
+                    }
+                    activeChatId = null;
+                }
+            });
             
             // Listener para o novo input de arquivo
             document.getElementById('chat-media-input').addEventListener('change', handleMediaUploadAndSend);
@@ -3901,19 +4180,7 @@ if (targetElement) {
             });
 
 
-       // --- LÓGICA DO MENU MOBILE ---
-            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-            const sidebar = document.querySelector('.sidebar');
-            mobileMenuBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Impede que o clique feche o menu imediatamente
-                sidebar.classList.toggle('active');
-            });
-            // Fecha o menu se clicar fora dele no page-wrapper
-            document.querySelector('.page-wrapper').addEventListener('click', () => {
-                if (sidebar.classList.contains('active')) {
-                    sidebar.classList.remove('active');
-                }
-            });
+       
 
 
             
@@ -4374,8 +4641,14 @@ if (targetElement) {
 
     <!-- O final do seu arquivo agora deve ser apenas a tag de fechamento body e html -->
 
+    <!-- TELA DE MENU DEDICADA PARA O MOBILE -->
+    <div id="mobile-menu-overlay" class="mobile-menu-overlay">
+        <button id="mobile-menu-close-btn">&times;</button>
+        <div id="mobile-menu-content">
+            <!-- Conteúdo da sidebar será clonado aqui via JS -->
+        </div>
+    </div>
     
-
     <!-- JANELA MODAL DO CHAT -->
     <div id="chat-overlay" class="auth-overlay">
         <div id="chat-container">
@@ -4397,7 +4670,12 @@ if (targetElement) {
                     <p>Selecione uma conversa para começar</p>
                 </div>
                 <div id="active-chat-window" style="display: none;">
-                    <header id="chat-window-header">
+<header id="chat-window-header">
+                        <!-- Botão de voltar para a visualização móvel -->
+                        <div id="chat-back-btn" style="display: none;">
+                            <i data-feather="arrow-left"></i>
+                        </div>
+                        <img id="chat-header-avatar" src="" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                         <span id="chat-header-name"></span>
                     </header>
                     <div id="chat-messages">
