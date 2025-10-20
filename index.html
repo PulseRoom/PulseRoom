@@ -1534,7 +1534,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v11.49</span>
+        <span class="version-number">v11.50</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -1578,6 +1578,7 @@
                                         <li data-quality="sd">SD</li>
                                     </ul>
                                 </div>
+                                <button id="download-video-btn" class="control-btn" title="Baixar Vídeo"><i data-feather="download"></i></button>
                                 <button id="fullscreen-btn" class="control-btn"><i data-feather="maximize"></i></button>
                            </div>
                         </div>
@@ -2955,6 +2956,61 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
                             video.play(); 
                         }
                     }, 100); // 100ms é uma piscada bem rápida
+                }
+            });
+
+            // --- Lógica do Botão de Download ---
+            const downloadBtn = document.getElementById('download-video-btn');
+            downloadBtn.addEventListener('click', async () => {
+                // 1. Verificar se o usuário está logado
+                if (!currentUserProfile) {
+                    openAuthModal();
+                    return;
+                }
+
+                // 2. Verificar se o usuário é PRO
+                if (currentUserProfile.pro_status !== 'active') {
+                    openSubscriptionModal();
+                    return;
+                }
+
+                // 3. Lógica de Download para usuários PRO
+                const videoUrl = video.src;
+                const videoTitle = document.getElementById('player-video-title').textContent.trim() || 'video';
+                const sanitizedTitle = videoTitle.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, '_');
+
+                const originalIcon = downloadBtn.innerHTML;
+                downloadBtn.innerHTML = `<i data-feather="loader"></i>`; // Ícone de carregamento
+                downloadBtn.disabled = true;
+                feather.replace();
+
+                try {
+                    // Usar Fetch para obter o vídeo como um Blob
+                    const response = await fetch(videoUrl);
+                    if (!response.ok) throw new Error('Falha na rede ao buscar o vídeo.');
+                    
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `${sanitizedTitle}.mp4`; // Define o nome do arquivo
+                    
+                    document.body.appendChild(a);
+                    a.click(); // Simula o clique para iniciar o download
+                    
+                    // Limpeza para liberar memória
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } catch (error) {
+                    console.error('Erro ao baixar o vídeo:', error);
+                    alert('Não foi possível iniciar o download. Tente novamente.');
+                } finally {
+                    // Restaura o botão ao estado original
+                    downloadBtn.innerHTML = originalIcon;
+                    downloadBtn.disabled = false;
+                    feather.replace();
                 }
             });
         }
@@ -4656,6 +4712,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <li><i data-feather="check"></i> Destintivo Pro</li>
                     <li><i data-feather="check"></i> Acesso a videos Exclusivos</li>
                     <li><i data-feather="check"></i> Videos em FULL HD</li>
+                    <li><i data-feather="check"></i> Download em Full HD</li>
                     <li><i data-feather="check"></i> Suporte</li>
                     <li><i data-feather="check"></i> Notificações de novidades do site</li>
                 </ul>
