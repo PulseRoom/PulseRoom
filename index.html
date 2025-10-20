@@ -990,6 +990,11 @@
         margin-top: 5px;
         display: block;
     }
+    
+    /* NOVA REGRA: Esconde o avatar quando o formulário tem a classe 'logged-out' */
+    .comment-form.logged-out #comment-user-avatar {
+        display: none;
+    }
 </style>
 </head>
 <body>
@@ -1534,7 +1539,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v11.51</span>
+        <span class="version-number">v12.01</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -1594,8 +1599,8 @@
                 </div>
                 <div class="video-comments">
                     <h3><span id="comment-count">0</span> Comentários</h3>
-                    <form id="comment-form" class="comment-form">
-                        <img id="comment-user-avatar" src="https://i.pinimg.com/236x/55/6e/2e/556e2edc7518c0e5cb4d59aef6729b24.jpg" alt="Seu avatar">
+                    <form id="comment-form" class="comment-form logged-out">
+                        <img id="comment-user-avatar" src="" alt="Seu avatar">
                         <input type="text" id="comment-input" placeholder="Adicionar um comentário..." required>
                         <button type="submit">Comentar</button>
                     </form>
@@ -1630,7 +1635,8 @@
         // --- VARIÁVEIS GLOBAIS DE CONEXÃO (declaradas mas não inicializadas para aguardar o 'defer') ---
         let _supabase, fbAuth, fbDb, fbStorage;
 
-                // --- VARIÁVEIS GLOBAIS ---
+                        // --- VARIÁVEIS GLOBAIS ---
+        let _allVideosCache = []; // NOVO: Cache com TODOS os vídeos para as recomendações
         let allFetchedVideos = [];
         let currentViewVideos = []; // Armazena a lista de vídeos que está sendo exibida (pode ser a lista completa, de busca, de curtidos, etc.)
         let currentPage = 1;
@@ -1643,6 +1649,8 @@
         let proPaymentListener = null; // Listener para pagamentos PRO pendentes
         let proPaymentRef = null; // Referência para o listener de pagamento
         let userPendingPaymentId = null; // ID da confirmação de pagamento pendente
+        let guestSessionId = null;
+        let guestPresenceInterval = null;
 
         // --- Variáveis do Chat ---
         let activeChatId = null;
@@ -2212,6 +2220,40 @@
                 alert("Erro ao criar conta: " + error.message);
             }
         }
+
+        function manageGuestPresence() {
+            if (guestPresenceInterval) return;
+
+            guestSessionId = sessionStorage.getItem('guestSessionId');
+            if (!guestSessionId) {
+                guestSessionId = fbDb.ref('guest_sessions').push().key;
+                sessionStorage.setItem('guestSessionId', guestSessionId);
+            }
+
+            const guestRef = fbDb.ref(`guest_sessions/${guestSessionId}`);
+            
+            guestRef.set({ last_seen: firebase.database.ServerValue.TIMESTAMP });
+            guestRef.onDisconnect().remove();
+
+            guestPresenceInterval = setInterval(() => {
+                if (guestSessionId) {
+                    fbDb.ref(`guest_sessions/${guestSessionId}`).update({ last_seen: firebase.database.ServerValue.TIMESTAMP });
+                }
+            }, 60000); 
+        }
+
+        function clearGuestPresence() {
+            if (guestPresenceInterval) {
+                clearInterval(guestPresenceInterval);
+                guestPresenceInterval = null;
+            }
+            guestSessionId = sessionStorage.getItem('guestSessionId');
+            if (guestSessionId) {
+                fbDb.ref(`guest_sessions/${guestSessionId}`).remove();
+                sessionStorage.removeItem('guestSessionId');
+                guestSessionId = null;
+            }
+        }
         
         async function handleSignIn(event) {
             event.preventDefault();
@@ -2240,6 +2282,9 @@
 
         async function handleLogout() {
             try {
+                if (currentUserProfile) {
+                    await fbDb.ref(`online_status/${currentUserProfile.uid}`).remove();
+                }
                 if (timeSpentInterval) clearInterval(timeSpentInterval); // Para o contador
                 // Desliga o listener de pagamento pendente da forma correta
                 if (proPaymentRef && proPaymentListener) {
@@ -2271,18 +2316,17 @@ function resetUIToLoggedOut() {
             currentUserProfile = null;
             const avatarContainer = document.getElementById('main-avatar-container');
             const loginBtn = document.getElementById('login-prompt-btn');
-            const commentAvatar = document.getElementById('comment-user-avatar');
-            const defaultAvatar = 'https://i.pinimg.com/236x/55-6e-2e/556e2edc7518c0e5cb4d59aef6729b24.jpg';
+            const commentForm = document.getElementById('comment-form'); // Pega o formulário
             
             avatarContainer.style.display = 'none';
             document.getElementById('main-user-avatar').src = '';
-            document.getElementById('main-user-avatar').style.border = '2px solid var(--accent-color)';
             loginBtn.style.display = 'block';
             
-            commentAvatar.src = defaultAvatar;
-            commentAvatar.classList.remove('pro-avatar-border');
+            // Adiciona a classe ao formulário para esconder o avatar via CSS
+            if (commentForm) {
+                commentForm.classList.add('logged-out');
+            }
             
-            // A verificação 'fbDb' impede erro se o usuário deslogar antes de tudo carregar
             if (fbDb) {
                 fbDb.ref('notifications').off();
             }
@@ -2358,24 +2402,33 @@ function resetUIToLoggedOut() {
             // Seleciona todos os elementos uma vez, verificando se existem
             const mainAvatar = document.getElementById('main-user-avatar');
             const avatarContainer = document.getElementById('main-avatar-container');
-            const mainProBadge = document.getElementById('main-pro-badge');
             const loginBtn = document.getElementById('login-prompt-btn');
-            const profileAvatar = document.getElementById('profile-avatar-img');
             const commentAvatar = document.getElementById('comment-user-avatar');
-            const proBadge = document.getElementById('pro-badge');
+            const commentForm = document.getElementById('comment-form'); // Pega o formulário
 
             if (mainAvatar) mainAvatar.src = avatarUrl;
             if (avatarContainer) avatarContainer.style.display = 'block';
             if (loginBtn) loginBtn.style.display = 'none';
-            if (commentAvatar) commentAvatar.src = avatarUrl;
             
-            // CORREÇÃO: A verificação já estava correta aqui, mas garantimos que ela seja a fonte da verdade.
+            if (commentAvatar) {
+                commentAvatar.src = avatarUrl;
+            }
+            // Remove a classe do formulário para que o CSS mostre o avatar
+            if (commentForm) {
+                commentForm.classList.remove('logged-out');
+            }
+            
             const isPro = profile.pro_info?.status === 'active';
 
             // Lógica para status PRO
             if (mainAvatar) mainAvatar.style.border = isPro ? '3px solid gold' : '2px solid var(--accent-color)';
-            if (profileAvatar) profileAvatar.style.border = isPro ? '3px solid gold' : '3px solid var(--accent-color)';
             if (commentAvatar) commentAvatar.classList.toggle('pro-avatar-border', isPro);
+            
+            // Atualiza os avatares nos outros modais também
+            const profileAvatar = document.getElementById('profile-avatar-img');
+            const proBadge = document.getElementById('pro-badge');
+            const mainProBadge = document.getElementById('main-pro-badge');
+            if (profileAvatar) profileAvatar.style.border = isPro ? '3px solid gold' : '3px solid var(--accent-color)';
             if (proBadge) proBadge.style.display = isPro ? 'inline-block' : 'none';
             if (mainProBadge) mainProBadge.style.display = isPro ? 'block' : 'none';
         }
@@ -2851,7 +2904,12 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
                 feather.replace();
             }
             
-            playPauseBtn.addEventListener('click', togglePlay);
+            // A CORREÇÃO PRINCIPAL ESTÁ AQUI
+            playPauseBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Impede que o clique "vaze" para o vídeo que está atrás
+                togglePlay();
+            });
+
             video.addEventListener('click', togglePlay);
             video.addEventListener('play', updatePlayIcon);
             video.addEventListener('pause', updatePlayIcon);
@@ -2913,7 +2971,6 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
                         video.classList.add('sd-quality-effect');
                     }
                 } else if (quality === 'hd') {
-                    // CORREÇÃO APLICADA AQUI
                     if (currentUserProfile && currentUserProfile.pro_info?.status === 'active') {
                         if (qualityBtn.textContent !== 'Full HD') {
                             qualityBtn.textContent = 'Full HD';
@@ -2947,7 +3004,6 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
                     return;
                 }
 
-                // CORREÇÃO APLICADA AQUI
                 if (currentUserProfile.pro_info?.status !== 'active') {
                     openSubscriptionModal();
                     return;
@@ -3194,17 +3250,53 @@ if (targetElement) {
             const recommendationsList = document.getElementById('recommendations-list');
             if (!recommendationsList) return;
             recommendationsList.innerHTML = '';
-            const otherVideos = allFetchedVideos.filter(v => v.id != currentVideoId).sort(() => 0.5 - Math.random()).slice(0, 8);
+
+            const sourceVideos = _allVideosCache.length > 0 ? _allVideosCache : allFetchedVideos;
+            const currentVideo = sourceVideos.find(v => v.id == currentVideoId);
+
+            if (!currentVideo) {
+                const fallbackVideos = sourceVideos.filter(v => v.id != currentVideoId).sort(() => 0.5 - Math.random()).slice(0, 10);
+                renderRecommendationCards(fallbackVideos);
+                return;
+            }
+
+            const currentCategory = currentVideo.category;
+            const totalRecommendations = 10;
+            const sameCategoryTarget = 6;
+
+            const sameCategoryVideos = sourceVideos.filter(v => v.id != currentVideoId && v.category === currentCategory);
+            const otherCategoryVideos = sourceVideos.filter(v => v.id != currentVideoId && v.category !== currentCategory);
+
+            sameCategoryVideos.sort(() => 0.5 - Math.random());
+            otherCategoryVideos.sort(() => 0.5 - Math.random());
+
+            let finalRecommendations = [];
+            const sameCategoryCount = Math.min(sameCategoryVideos.length, sameCategoryTarget);
+            const otherCategoryCount = totalRecommendations - sameCategoryCount;
+
+            finalRecommendations.push(...sameCategoryVideos.slice(0, sameCategoryCount));
+            finalRecommendations.push(...otherCategoryVideos.slice(0, otherCategoryCount));
+
+            if (finalRecommendations.length < totalRecommendations) {
+                const remainingNeeded = totalRecommendations - finalRecommendations.length;
+                const remainingFromOthers = otherCategoryVideos.slice(otherCategoryCount);
+                finalRecommendations.push(...remainingFromOthers.slice(0, remainingNeeded));
+            }
+            
+            finalRecommendations.sort(() => 0.5 - Math.random());
+            renderRecommendationCards(finalRecommendations);
+        }
+
+        function renderRecommendationCards(videos) {
+            const recommendationsList = document.getElementById('recommendations-list');
             const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-            otherVideos.forEach(video => {
+            videos.forEach(video => {
                 const recCard = document.createElement('div');
                 recCard.className = 'recommendation-card';
                 recCard.dataset.videoId = video.id;
                 
                 const proBadge = video.is_pro ? '<span class="pro-badge-overlay">PRO</span>' : '';
-                
-                // LÓGICA PARA A TAG "NOVO"
                 const videoCreationDate = new Date(video.created_at);
                 const isNew = videoCreationDate > twentyFourHoursAgo;
                 const newBadge = isNew ? '<span class="new-badge-overlay">NOVO</span>' : '';
@@ -3214,7 +3306,6 @@ if (targetElement) {
                         ${proBadge}
                         ${newBadge}
                         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Flag_of_Brazil.svg/330px-Flag_of_Brazil.svg.png" alt="Bandeira do Brasil" class="flag-overlay">
-                        <!-- Otimização: Lazy Loading + Redimensionamento -->
                         <img loading="lazy" src="${video.thumbnail_url}?transform=w-320,h-180" alt="Thumbnail" class="video-thumbnail-img">
                     </div>
                     <div class="recommendation-info">
@@ -3232,25 +3323,30 @@ if (targetElement) {
             const videoId = card.dataset.videoId;
             const playerVideo = document.getElementById('main-player-video');
             
-            // OTIMIZAÇÃO: Define a capa (poster) antes de carregar o vídeo
+            const videoUrl = card.dataset.videoUrl;
+
+            // VALIDAÇÃO: Impede a abertura do player se a URL do vídeo for inválida ou vazia
+            if (!videoUrl || typeof videoUrl !== 'string' || videoUrl.trim() === '') {
+                console.error("Tentativa de abrir player com URL de vídeo inválida para o ID:", videoId);
+                alert("Não foi possível carregar este vídeo. A URL parece estar ausente ou corrompida.");
+                return;
+            }
+
             const videoData = allFetchedVideos.find(v => v.id == videoId);
             if (videoData) {
                 playerVideo.poster = videoData.thumbnail_url;
             }
 
-            playerVideo.classList.remove('sd-quality-effect'); // Garante que comece sem o filtro
+            playerVideo.classList.remove('sd-quality-effect');
 
-            // --- Lógica das Categorias Aleatórias ---
             const playerNav = document.getElementById('player-categories');
-            playerNav.innerHTML = ''; // Limpa as categorias anteriores
+            playerNav.innerHTML = '';
             const allCategories = Array.from(categoriesMap.entries());
-            // Embaralha o array
             for (let i = allCategories.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [allCategories[i], allCategories[j]] = [allCategories[j], allCategories[i]];
             }
             const randomCategories = allCategories.slice(0, 4);
-            // Popula o menu de navegação do player
             randomCategories.forEach(([slug, name]) => {
                 const link = document.createElement('a');
                 link.href = '#';
@@ -3258,7 +3354,6 @@ if (targetElement) {
                 link.textContent = name;
                 playerNav.appendChild(link);
             });
-            // --- Fim da Lógica ---
 
             fbDb.ref(`videos/${videoId}/views`).transaction(currentViews => (currentViews || 0) + 1);
 
@@ -3267,20 +3362,17 @@ if (targetElement) {
             }
 
             playerOverlay.dataset.currentVideoId = videoId;
-            const videoUrl = card.dataset.videoUrl; // Supondo que a URL venha do card
 
-            // **LÓGICA DO PLAYER INTELIGENTE (ADAPTIVE STREAMING)**
-            if (videoUrl.includes('.m3u8')) { // Verifica se é um link de streaming
+            if (videoUrl.includes('.m3u8')) {
                 if (Hls.isSupported()) {
                     const hls = new Hls();
                     hls.loadSource(videoUrl);
                     hls.attachMedia(playerVideo);
+                    playerVideo.hls = hls; // Guarda a instância para poder destruí-la depois
                 } else if (playerVideo.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Navegadores como o Safari no iOS suportam HLS nativamente
                     playerVideo.src = videoUrl;
                 }
             } else {
-                // Lógica antiga para vídeos normais (progressive download)
                 playerVideo.src = videoUrl;
             }
 
@@ -3291,18 +3383,26 @@ if (targetElement) {
             mainContent.style.display = 'none';
             playerOverlay.classList.add('active');
 
-            // Define a qualidade inicial do player
             const qualityBtn = document.getElementById('quality-btn');
             if (currentUserProfile && currentUserProfile.pro_status === 'active') {
                 qualityBtn.textContent = 'Full HD';
             } else {
                 qualityBtn.textContent = 'SD';
-                playerVideo.classList.add('sd-quality-effect'); // MELHORIA: Aplica o filtro SD ao iniciar
+                playerVideo.classList.add('sd-quality-effect');
             }
             
             setupCustomVideoControls();
             
-            playerVideo.play();
+            // CORREÇÃO: Trata a promessa do play() para evitar o AbortError
+            const playPromise = playerVideo.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    if (error.name !== 'AbortError') {
+                        console.error("Erro ao tentar iniciar o vídeo:", error);
+                    }
+                });
+            }
+            
             feather.replace();
         }
 
@@ -3441,10 +3541,21 @@ if (targetElement) {
             const mainContent = document.querySelector('.main-content');
             const playerVideo = document.getElementById('main-player-video');
             if (!playerOverlay || !mainContent || !playerVideo) return;
+            
             detachFirebaseListeners();
             playerVideo.pause();
+            
+            if (playerVideo.hls) {
+                playerVideo.hls.destroy();
+                delete playerVideo.hls;
+            }
+
+            // CORREÇÃO: A linha playerVideo.load() foi removida daqui.
+            // Chamar .load() em um elemento sem 'src' é o que causa o erro NotSupportedError.
             playerVideo.src = '';
-            playerVideo.classList.remove('sd-quality-effect'); // Garante que o filtro seja removido ao fechar
+            playerVideo.removeAttribute('src'); 
+
+            playerVideo.classList.remove('sd-quality-effect');
             playerOverlay.classList.remove('active');
             mainContent.style.display = 'block';
         }
@@ -3775,15 +3886,70 @@ if (targetElement) {
             });
         }
 
-        // NOVA FUNÇÃO PARA OUVIR MUDANÇAS NA TABELA DE VÍDEOS
+// NOVA FUNÇÃO PARA OUVIR MUDANÇAS NA TABELA DE VÍDEOS
         function listenForVideoChanges() {
             _supabase.channel('videos')
               .on('postgres_changes', { event: '*', schema: 'public', table: 'videos' }, payload => {
                 console.log('Mudança detectada na tabela de vídeos:', payload);
                 // Quando qualquer mudança ocorrer, simplesmente recarregamos os vídeos na tela
-                displayVideos('all', 'random'); 
+                displayVideos('all', 'random');
+                fetchAllVideosForCache(); // Atualiza o cache de recomendações
               })
               .subscribe();
+        }
+
+        async function fetchAllVideosForCache() {
+            try {
+                // Passo 1: Buscar todos os vídeos aprovados do Supabase (sem a coluna 'is_pro')
+                const { data: videos, error } = await _supabase.from('videos')
+                    .select('id, title, category, thumbnail_url, created_at, duration')
+                    .eq('status', 'approved');
+
+                if (error) throw error; // Lança o erro para o bloco catch
+
+                // Passo 2: Buscar todos os metadados (incluindo status PRO) do Firebase
+                const proStatusRef = fbDb.ref('video_metadata');
+                const proStatusSnapshot = await proStatusRef.once('value');
+                const proStatusData = proStatusSnapshot.val() || {};
+
+                // Passo 3: Combinar os dados em um único array
+                const combinedVideos = videos.map(video => ({
+                    ...video,
+                    is_pro: proStatusData[video.id]?.is_pro === true
+                }));
+
+                _allVideosCache = combinedVideos; // Salva o resultado combinado no cache
+                
+            } catch (err) {
+                console.error("Erro ao carregar cache de vídeos:", err);
+            }
+        }
+
+        async function fetchAllVideosForCache() {
+            try {
+                // Passo 1: Buscar todos os vídeos aprovados do Supabase (CORREÇÃO APLICADA AQUI)
+                const { data: videos, error } = await _supabase.from('videos')
+                    .select('id, title, category, thumbnail_url, created_at, duration') // Removida a coluna 'is_pro'
+                    .eq('status', 'approved');
+
+                if (error) throw error; // Lança o erro para o bloco catch
+
+                // Passo 2: Buscar todos os metadados (incluindo status PRO) do Firebase
+                const proStatusRef = fbDb.ref('video_metadata');
+                const proStatusSnapshot = await proStatusRef.once('value');
+                const proStatusData = proStatusSnapshot.val() || {};
+
+                // Passo 3: Combinar os dados em um único array
+                const combinedVideos = videos.map(video => ({
+                    ...video,
+                    is_pro: proStatusData[video.id]?.is_pro === true
+                }));
+
+                _allVideosCache = combinedVideos; // Salva o resultado combinado no cache
+                
+            } catch (err) {
+                console.error("Erro ao carregar cache de vídeos:", err);
+            }
         }
 
 
@@ -3869,6 +4035,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 if (effectiveUid) {
+                    clearGuestPresence();
                     const profileRef = fbDb.ref('profiles/' + effectiveUid);
                     profileRef.once('value', (snapshot) => {
                         let profileData = snapshot.val() || {};
@@ -3879,6 +4046,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             return;
                         }
                         
+                        const onlineStatusRef = fbDb.ref(`online_status/${effectiveUid}`);
+                        onlineStatusRef.set({ last_seen: firebase.database.ServerValue.TIMESTAMP });
+                        onlineStatusRef.onDisconnect().remove();
+                        
                         updateUIAfterLogin({ uid: effectiveUid, ...profileData });
                         listenForPendingPayment(effectiveUid);
                         listenForUnreadChats(effectiveUid);
@@ -3888,6 +4059,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                              timeSpentInterval = setInterval(() => {
                                 const userTimeRef = fbDb.ref(`profiles/${user.uid}/time_spent_minutes`);
                                 userTimeRef.transaction(currentMinutes => (currentMinutes || 0) + 1);
+                                fbDb.ref(`online_status/${user.uid}`).update({ last_seen: firebase.database.ServerValue.TIMESTAMP });
                             }, 60000);
                         }
                         
@@ -3911,6 +4083,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     hidePendingPaymentUI();
                     document.getElementById('main-chat-badge').style.display = 'none';
                     resetUIToLoggedOut();
+                    manageGuestPresence();
                 }
             });
             
@@ -3921,6 +4094,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Carrega dependências visuais e configura todos os event listeners primeiro
             await fetchAndDisplayCategories(); 
+            fetchAllVideosForCache(); // Inicia o carregamento de todos os vídeos para o cache em segundo plano
             populateMobileMenu(); // <<-- MOVIDO PARA DEPOIS DE CARREGAR AS CATEGORIAS
             setupEventListeners(); 
 
