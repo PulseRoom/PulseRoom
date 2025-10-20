@@ -1534,7 +1534,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v11.50</span>
+        <span class="version-number">v11.51</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -2352,7 +2352,7 @@ function resetUIToLoggedOut() {
         }
 
         function updateUIAfterLogin(profile) {
-            currentUserProfile = profile;
+            currentUserProfile = profile; // Isso agora inclui o objeto pro_info
             const avatarUrl = profile.avatar_url || 'https://i.pinimg.com/236x/55-6e-2e/556e2edc7518c0e5cb4d59aef6729b24.jpg';
             
             // Seleciona todos os elementos uma vez, verificando se existem
@@ -2368,7 +2368,8 @@ function resetUIToLoggedOut() {
             if (avatarContainer) avatarContainer.style.display = 'block';
             if (loginBtn) loginBtn.style.display = 'none';
             if (commentAvatar) commentAvatar.src = avatarUrl;
-
+            
+            // CORREÇÃO: A verificação já estava correta aqui, mas garantimos que ela seja a fonte da verdade.
             const isPro = profile.pro_info?.status === 'active';
 
             // Lógica para status PRO
@@ -2798,7 +2799,7 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
             const fullscreenBtn = document.getElementById('fullscreen-btn');
             const progressBar = playerWrapper.querySelector('.progress-bar');
             const progressFilled = playerWrapper.querySelector('.progress-filled');
-            const progressBuffered = playerWrapper.querySelector('.progress-buffered'); // PEGA A NOVA BARRA
+            const progressBuffered = playerWrapper.querySelector('.progress-buffered');
             const volumeBtn = document.getElementById('volume-btn');
             const volumeSlider = document.getElementById('volume-slider');
             const qualityBtn = document.getElementById('quality-btn');
@@ -2824,21 +2825,16 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
                 video.currentTime = scrubTime;
             }
 
-            // Função auxiliar para detectar dispositivos móveis
             function isMobileDevice() {
                 return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             }
 
             function toggleFullscreen() {
-                // Se for um dispositivo móvel e o método nativo do webkit existir (muito comum no iOS e outros)
                 if (isMobileDevice() && typeof video.webkitEnterFullscreen === 'function') {
                     video.webkitEnterFullscreen();
-                } 
-                // Lógica padrão para desktops
-                else {
+                } else {
                     if (!document.fullscreenElement) {
                         playerWrapper.requestFullscreen().catch(err => {
-                            // Não mostra mais o alert, apenas loga no console para não incomodar o usuário
                             console.error("Erro ao entrar em tela cheia:", err.message);
                         });
                     } else {
@@ -2863,11 +2859,8 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
             progressBar.addEventListener('click', scrub);
             fullscreenBtn.addEventListener('click', toggleFullscreen);
             document.addEventListener('fullscreenchange', updateFullscreenIcon);
-
-            // Adiciona listener de clique duplo no vídeo para alternar tela cheia
             video.addEventListener('dblclick', toggleFullscreen);
 
-            // --- Lógica da Barra de Buffer ---
             function updateBufferBar() {
                 if (video.duration > 0 && video.buffered.length > 0) {
                     const bufferedEnd = video.buffered.end(video.buffered.length - 1);
@@ -2877,8 +2870,6 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
             }
             video.addEventListener('progress', updateBufferBar);
 
-
-            // --- Lógica de Volume ---
             function updateVolumeIcon() {
                 const icon = video.muted || video.volume === 0 ? 'volume-x' : video.volume > 0.5 ? 'volume-2' : 'volume-1';
                 volumeBtn.innerHTML = `<i data-feather="${icon}"></i>`;
@@ -2887,16 +2878,11 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
 
             function handleVolumeChange() {
                 video.volume = volumeSlider.value;
-                if (video.volume === 0) {
-                    video.muted = true;
-                } else {
-                    video.muted = false;
-                }
+                video.muted = video.volume === 0;
             }
 
             volumeBtn.addEventListener('click', () => {
                 video.muted = !video.muted;
-                // Se estiver desmutando e o volume era 0, define um volume padrão
                 if (!video.muted && video.volume === 0) {
                     video.volume = 0.5;
                 }
@@ -2906,12 +2892,9 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
                 volumeSlider.value = video.volume;
                 updateVolumeIcon();
             });
-
-            // Inicializa o estado do volume
             updateVolumeIcon();
             volumeSlider.value = video.volume;
             
-            // --- Lógica do Seletor de Qualidade ---
             qualityBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 qualityOptionsList.classList.toggle('active');
@@ -2927,14 +2910,15 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
                     if (qualityBtn.textContent !== 'SD') {
                         qualityBtn.textContent = 'SD';
                         qualityChanged = true;
-                        video.classList.add('sd-quality-effect'); // Adiciona o filtro SD
+                        video.classList.add('sd-quality-effect');
                     }
                 } else if (quality === 'hd') {
-                    if (currentUserProfile && currentUserProfile.pro_status === 'active') {
+                    // CORREÇÃO APLICADA AQUI
+                    if (currentUserProfile && currentUserProfile.pro_info?.status === 'active') {
                         if (qualityBtn.textContent !== 'Full HD') {
                             qualityBtn.textContent = 'Full HD';
                             qualityChanged = true;
-                            video.classList.remove('sd-quality-effect'); // Remove o filtro SD
+                            video.classList.remove('sd-quality-effect');
                         }
                     } else {
                         openSubscriptionModal();
@@ -2945,69 +2929,55 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
                 if (qualityChanged) {
                     const currentTime = video.currentTime;
                     const isPaused = video.paused;
-                    // Esconde o vídeo, o que revela o fundo preto do container
                     video.style.display = 'none'; 
-                    
                     setTimeout(() => {
-                        // Traz o vídeo de volta na mesma posição
                         video.style.display = 'block'; 
                         video.currentTime = currentTime;
                         if (!isPaused) { 
                             video.play(); 
                         }
-                    }, 100); // 100ms é uma piscada bem rápida
+                    }, 100);
                 }
             });
 
-            // --- Lógica do Botão de Download ---
             const downloadBtn = document.getElementById('download-video-btn');
             downloadBtn.addEventListener('click', async () => {
-                // 1. Verificar se o usuário está logado
                 if (!currentUserProfile) {
                     openAuthModal();
                     return;
                 }
 
-                // 2. Verificar se o usuário é PRO
-                if (currentUserProfile.pro_status !== 'active') {
+                // CORREÇÃO APLICADA AQUI
+                if (currentUserProfile.pro_info?.status !== 'active') {
                     openSubscriptionModal();
                     return;
                 }
 
-                // 3. Lógica de Download para usuários PRO
                 const videoUrl = video.src;
                 const videoTitle = document.getElementById('player-video-title').textContent.trim() || 'video';
                 const sanitizedTitle = videoTitle.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, '_');
-
                 const originalIcon = downloadBtn.innerHTML;
-                downloadBtn.innerHTML = `<i data-feather="loader"></i>`; // Ícone de carregamento
+                downloadBtn.innerHTML = `<i data-feather="loader"></i>`;
                 downloadBtn.disabled = true;
                 feather.replace();
 
                 try {
-                    // Usar Fetch para obter o vídeo como um Blob
                     const response = await fetch(videoUrl);
                     if (!response.ok) throw new Error('Falha na rede ao buscar o vídeo.');
-                    
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
-                    
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    a.download = `${sanitizedTitle}.mp4`; // Define o nome do arquivo
-                    
+                    a.download = `${sanitizedTitle}.mp4`;
                     document.body.appendChild(a);
-                    a.click(); // Simula o clique para iniciar o download
-                    
-                    // Limpeza para liberar memória
+                    a.click();
                     window.URL.revokeObjectURL(url);
                     document.body.removeChild(a);
                 } catch (error) {
                     console.error('Erro ao baixar o vídeo:', error);
                     alert('Não foi possível iniciar o download. Tente novamente.');
                 } finally {
-                    // Restaura o botão ao estado original
                     downloadBtn.innerHTML = originalIcon;
                     downloadBtn.disabled = false;
                     feather.replace();
@@ -3205,7 +3175,8 @@ if (targetElement) {
             const isProVideo = videoData.is_pro;
 
             if (isProVideo) {
-                if (currentUserProfile && currentUserProfile.pro_status === 'active') {
+                // CORREÇÃO APLICADA AQUI
+                if (currentUserProfile && currentUserProfile.pro_info?.status === 'active') {
                     const mockCard = { dataset: { videoId: videoData.id, videoUrl: videoData.video_url, title: videoData.title, description: videoData.description || '' } };
                     openPlayer(mockCard);
                 } else if (currentUserProfile) {
@@ -3734,7 +3705,8 @@ if (targetElement) {
                     user_id: currentUserProfile.uid,
                     full_name: currentUserProfile.full_name,
                     avatar_url: currentUserProfile.avatar_url,
-                    is_pro: currentUserProfile.pro_status === 'active',
+                    // CORREÇÃO APLICADA AQUI
+                    is_pro: currentUserProfile.pro_info?.status === 'active',
                     timestamp: firebase.database.ServerValue.TIMESTAMP
                 });
                 document.getElementById('comment-input').value = '';
