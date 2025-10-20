@@ -155,7 +155,21 @@
         right: 5px;
     }
     .video-info { padding: 15px; }
-    .video-info h4 { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .video-info h4 { 
+        font-size: 1.1rem; 
+        font-weight: 600; 
+        margin-bottom: 8px; 
+        white-space: normal; /* Permite que o texto quebre a linha */
+        overflow: visible; /* Garante que o texto não seja cortado */
+        text-overflow: clip; /* Remove os "..." */
+        line-height: 1.3; /* Melhora a legibilidade do texto em múltiplas linhas */
+        height: 2.6em; /* Limita a altura a duas linhas (1.3em * 2) */
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* Limita o texto a duas linhas */
+        -webkit-box-orient: vertical;
+        overflow: hidden; /* Esconde o texto que passar de duas linhas */
+        text-overflow: ellipsis; /* Adiciona "..." se o texto for maior que duas linhas */
+    }
     .video-category { background-color: var(--accent-color); color: var(--background-color); padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 500; margin-top: 8px; display: inline-block; }
     .video-meta { display: flex; align-items: center; gap: 15px; color: var(--secondary-text-color); font-size: 0.9rem; }
     .pagination { display: flex; justify-content: center; align-items: center; margin-top: 40px; }
@@ -1520,7 +1534,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v11.47</span>
+        <span class="version-number">v11.48</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -2651,8 +2665,47 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
         let videos = [];
         let totalVideos = 0;
 
-        // SE A ORDENAÇÃO FOR POR 'VIEWS' OU 'LIKES', USAMOS A NOVA ESTRATÉGIA
-        if (sortBy === 'views' || sortBy === 'likes') {
+        if (sortBy === 'random') {
+            const cacheKey = `randomVideoCache_${categorySlug || 'all'}`;
+            const cachedItem = localStorage.getItem(cacheKey);
+            const oneHour = 60 * 60 * 1000;
+            let videoIds = [];
+
+            if (cachedItem) {
+                const { ids, timestamp } = JSON.parse(cachedItem);
+                if (Date.now() - timestamp < oneHour) {
+                    videoIds = ids;
+                }
+            }
+
+            if (videoIds.length === 0) {
+                let idQuery = _supabase.from('videos').select('id').eq('status', 'approved');
+                if (categorySlug && categorySlug !== 'all') {
+                    idQuery = idQuery.eq('category', categorySlug);
+                }
+                const { data: idData, error: idError } = await idQuery;
+                if (idError) throw idError;
+
+                const freshIds = idData.map(v => v.id);
+                for (let i = freshIds.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [freshIds[i], freshIds[j]] = [freshIds[j], freshIds[i]];
+                }
+                
+                videoIds = freshIds;
+                localStorage.setItem(cacheKey, JSON.stringify({ ids: videoIds, timestamp: Date.now() }));
+            }
+
+            totalVideos = videoIds.length;
+            const startIndex = (page - 1) * videosPerPage;
+            const pageIds = videoIds.slice(startIndex, startIndex + videosPerPage);
+
+            if (pageIds.length > 0) {
+                const { data: supabaseVideos, error: videoError } = await _supabase.from('videos').select('*').in('id', pageIds);
+                if (videoError) throw videoError;
+                videos = supabaseVideos.sort((a, b) => pageIds.indexOf(a.id) - pageIds.indexOf(b.id));
+            }
+        } else if (sortBy === 'views' || sortBy === 'likes') {
             const interactionRef = fbDb.ref('videos');
             const snapshot = await interactionRef.once('value');
             const interactionData = snapshot.val() || {};
@@ -2669,10 +2722,9 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
                 });
             }
 
-            const top50Ids = sortedIds.slice(0, 50); // Pegamos os 50 melhores
+            const top50Ids = sortedIds.slice(0, 50);
             
             if (top50Ids.length > 0) {
-                // Buscamos os detalhes dos 50 melhores no Supabase
                 let supabaseQuery = _supabase.from('videos').select('*').in('id', top50Ids).eq('status', 'approved');
                  if (categorySlug && categorySlug !== 'all') {
                     supabaseQuery = supabaseQuery.eq('category', categorySlug);
@@ -2680,16 +2732,14 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
                 const { data: supabaseVideos, error } = await supabaseQuery;
                 if (error) throw error;
                 
-                // Ordenamos o resultado do Supabase para manter a ordem de 'views' ou 'likes'
                 videos = supabaseVideos.sort((a, b) => top50Ids.indexOf(String(a.id)) - top50Ids.indexOf(String(b.id)));
             }
             
             totalVideos = videos.length;
-            // Para a paginação local, pegamos apenas a fatia correta da lista
             const startIndex = (page - 1) * videosPerPage;
             videos = videos.slice(startIndex, startIndex + videosPerPage);
         }
-        // SE A ORDENAÇÃO FOR PADRÃO, USAMOS A PAGINAÇÃO DO SERVIDOR
+        // Lógica para 'recentes' e padrão
         else {
             const startIndex = (page - 1) * videosPerPage;
             const endIndex = startIndex + videosPerPage - 1;
@@ -2705,14 +2755,12 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
             totalVideos = count;
         }
 
-        // Se, após toda a lógica, não tivermos vídeos, mostramos a mensagem.
         if (!videos || videos.length === 0) {
             videoGrid.innerHTML = '<p>Nenhum vídeo encontrado.</p>';
             setupPagination(0);
             return;
         }
         
-        // A lógica de enriquecer com dados do Firebase continua a mesma
         const interactionRef = fbDb.ref('videos');
         const proStatusRef = fbDb.ref('video_metadata');
         const [interactionSnapshot, proStatusSnapshot] = await Promise.all([interactionRef.once('value'), proStatusRef.once('value')]);
@@ -2733,7 +2781,7 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
 
         renderVideoGrid(combinedVideos);
         setupPagination(totalVideos);
-        currentPage = page; // Garante que a página atual seja setada corretamente
+        currentPage = page;
 
     } catch (error) {
         console.error('Erro ao buscar ou ordenar vídeos:', error);
@@ -3068,33 +3116,48 @@ if (targetElement) {
 
         // --- FUNÇÕES DO PLAYER E INTERAÇÕES ---
 
-        function tryToOpenVideo(videoId) {
+        async function tryToOpenVideo(videoId) {
             if (!videoId) return;
 
-            // Encontra os dados completos do vídeo na nossa lista global
-            const videoData = allFetchedVideos.find(v => v.id == videoId);
+            // Tenta encontrar na lista global primeiro
+            let videoData = allFetchedVideos.find(v => v.id == videoId);
+
+            // Se não encontrar (ex: vídeo de outra página), busca diretamente no banco
             if (!videoData) {
-                console.error("Não foi possível encontrar os dados do vídeo com ID:", videoId);
-                return;
+                try {
+                    // Busca os dados principais do Supabase
+                    const { data: supabaseData, error: supabaseError } = await _supabase.from('videos').select('id, video_url, title, description').eq('id', videoId).single();
+                    if (supabaseError || !supabaseData) {
+                        throw new Error(supabaseError?.message || "Vídeo não encontrado no Supabase.");
+                    }
+                    
+                    // Busca o status PRO do Firebase, que é essencial para a lógica de permissão
+                    const proStatusSnapshot = await fbDb.ref(`video_metadata/${videoId}`).once('value');
+                    
+                    // Combina os dados necessários
+                    videoData = {
+                        ...supabaseData,
+                        is_pro: proStatusSnapshot.val()?.is_pro === true
+                    };
+                } catch (err) {
+                    console.error("Falha ao buscar dados do vídeo sob demanda:", err);
+                    alert("Não foi possível carregar os dados deste vídeo. Tente recarregar a página.");
+                    return;
+                }
             }
 
             const isProVideo = videoData.is_pro;
 
             if (isProVideo) {
-                // Se o vídeo é PRO, verificamos o status do usuário
                 if (currentUserProfile && currentUserProfile.pro_status === 'active') {
-                    // Usuário é PRO, pode assistir
                     const mockCard = { dataset: { videoId: videoData.id, videoUrl: videoData.video_url, title: videoData.title, description: videoData.description || '' } };
                     openPlayer(mockCard);
                 } else if (currentUserProfile) {
-                    // Usuário está logado, mas não é PRO
                     openSubscriptionModal();
                 } else {
-                    // Usuário não está logado
                     openAuthModal();
                 }
             } else {
-                // Vídeo não é PRO, qualquer um pode assistir
                 const mockCard = { dataset: { videoId: videoData.id, videoUrl: videoData.video_url, title: videoData.title, description: videoData.description || '' } };
                 openPlayer(mockCard);
             }
