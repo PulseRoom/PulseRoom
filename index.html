@@ -3819,6 +3819,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             fbStorage = firebase.storage();
             // --- FIM DA INICIALIZAÇÃO ---
 
+            // --- LÓGICA DE CONTAGEM DE ACESSOS (ANALYTICS) ---
+            const analyticsRef = fbDb.ref('site_analytics');
+            // Incrementa o contador total de visitas
+            analyticsRef.child('total_visits').transaction(count => (count || 0) + 1);
+            // Incrementa o contador de visitas do dia atual
+            const today = new Date().toISOString().slice(0, 10); // Formato YYYY-MM-DD
+            analyticsRef.child('daily_visits').child(today).transaction(count => (count || 0) + 1);
+            // --- FIM DO ANALYTICS ---
+
             // **LISTENER DE AUTENTICAÇÃO MOVIDO PARA CÁ (CORREÇÃO DEFINITIVA)**
             fbAuth.onAuthStateChanged(async (user) => {
                 const impersonateUid = localStorage.getItem('admin_impersonate_uid');
