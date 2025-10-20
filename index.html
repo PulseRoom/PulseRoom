@@ -1204,45 +1204,45 @@
         margin-left: 0;
     }
     .mobile-view .video-grid {
-        grid-template-columns: repeat(3, 1fr); /* TRÊS colunas */
-        gap: 10px; /* Reduz o espaçamento */
+        grid-template-columns: repeat(2, 1fr); /* DUAS colunas para vídeos maiores */
+        gap: 15px; /* Aumenta um pouco o espaçamento */
     }
 
-    /* Ajustes de fonte e espaçamento para os cards menores no mobile */
+    /* Ajustes de fonte e espaçamento para os cards no mobile */
     .mobile-view .video-card .video-info {
-        padding: 10px; /* Reduz o padding interno */
+        padding: 12px; /* Aumenta um pouco o padding */
     }
 
     .mobile-view .video-card .video-info h4 {
-        font-size: 0.8rem; /* Diminui a fonte do título */
-        margin-bottom: 5px;
+        font-size: 0.9rem; /* Aumenta a fonte do título */
+        margin-bottom: 6px;
     }
 
     .mobile-view .video-card .video-meta {
-        font-size: 0.7rem; /* Diminui a fonte dos ícones */
-        gap: 8px;
+        font-size: 0.8rem; /* Aumenta a fonte dos ícones */
+        gap: 10px;
     }
     
     .mobile-view .video-card .video-meta i {
-        width: 12px; /* Diminui o tamanho dos ícones */
+        width: 14px; /* Aumenta o tamanho dos ícones */
     }
 
     .mobile-view .video-card .video-category {
-        font-size: 0.6rem; /* Diminui a tag de categoria */
-        padding: 1px 5px;
-        margin-top: 5px;
+        font-size: 0.7rem; /* Aumenta um pouco a tag de categoria */
+        padding: 2px 6px;
+        margin-top: 6px;
     }
     
     /* Ajusta o tamanho dos badges PRO e NOVO para a nova grade */
     .mobile-view .video-card .pro-badge-overlay,
     .mobile-view .video-card .new-badge-overlay {
-        font-size: 0.6rem;
-        padding: 1px 5px;
-        top: 5px;
-        left: 5px;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        top: 6px;
+        left: 6px;
     }
     .mobile-view .video-card .new-badge-overlay {
-        bottom: 5px;
+        bottom: 6px;
         top: auto; /* Garante que a propriedade top não interfira */
     }
     .mobile-view .pagination a {
@@ -1534,7 +1534,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v11.48</span>
+        <span class="version-number">v11.49</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -2681,7 +2681,7 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
             if (videoIds.length === 0) {
                 let idQuery = _supabase.from('videos').select('id').eq('status', 'approved');
                 if (categorySlug && categorySlug !== 'all') {
-                    idQuery = idQuery.eq('category', categorySlug);
+                    idQuery = idQuery.ilike('category', categorySlug);
                 }
                 const { data: idData, error: idError } = await idQuery;
                 if (idError) throw idError;
@@ -2727,7 +2727,7 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
             if (top50Ids.length > 0) {
                 let supabaseQuery = _supabase.from('videos').select('*').in('id', top50Ids).eq('status', 'approved');
                  if (categorySlug && categorySlug !== 'all') {
-                    supabaseQuery = supabaseQuery.eq('category', categorySlug);
+                    supabaseQuery = supabaseQuery.ilike('category', categorySlug);
                 }
                 const { data: supabaseVideos, error } = await supabaseQuery;
                 if (error) throw error;
@@ -2745,7 +2745,7 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
             const endIndex = startIndex + videosPerPage - 1;
             let supabaseQuery = _supabase.from('videos').select('*', { count: 'exact' }).eq('status', 'approved');
             if (categorySlug && categorySlug !== 'all') {
-                supabaseQuery = supabaseQuery.eq('category', categorySlug);
+                supabaseQuery = supabaseQuery.ilike('category', categorySlug);
             }
             supabaseQuery = supabaseQuery.order('created_at', { ascending: false });
             
