@@ -995,6 +995,13 @@
     .comment-form.logged-out #comment-user-avatar {
         display: none;
     }
+
+    /* Adicionado para o link do card de vídeo */
+    .video-card-link, .recommendation-card-link {
+        text-decoration: none;
+        color: inherit;
+        display: block; /* Garante que o link ocupe o espaço do card */
+    }
 </style>
 </head>
 <body>
@@ -1539,7 +1546,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v12.01</span>
+        <span class="version-number">v12.02</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -1651,6 +1658,7 @@
         let userPendingPaymentId = null; // ID da confirmação de pagamento pendente
         let guestSessionId = null;
         let guestPresenceInterval = null;
+        let originalPageTitle = document.title;
 
         // --- Variáveis do Chat ---
         let activeChatId = null;
@@ -3292,6 +3300,10 @@ if (targetElement) {
             const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
             videos.forEach(video => {
+                const recLink = document.createElement('a');
+                recLink.href = `?v=${video.id}`;
+                recLink.classList.add('recommendation-card-link');
+
                 const recCard = document.createElement('div');
                 recCard.className = 'recommendation-card';
                 recCard.dataset.videoId = video.id;
@@ -3312,7 +3324,9 @@ if (targetElement) {
                         <h4>${video.title}</h4>
                         <p>${video.duration || ''}</p>
                     </div>`;
-                recommendationsList.appendChild(recCard);
+                
+                recLink.appendChild(recCard);
+                recommendationsList.appendChild(recLink);
             });
         }
         
@@ -3382,6 +3396,7 @@ if (targetElement) {
             attachFirebaseListeners(videoId);
             mainContent.style.display = 'none';
             playerOverlay.classList.add('active');
+            document.title = card.dataset.title;
 
             const qualityBtn = document.getElementById('quality-btn');
             if (currentUserProfile && currentUserProfile.pro_status === 'active') {
@@ -3416,8 +3431,14 @@ if (targetElement) {
             const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
             videosToRender.forEach(video => {
+                // Cria um link <a> como invólucro para o card
+                const videoLink = document.createElement('a');
+                videoLink.href = `?v=${video.id}`; // Define o link para deep linking
+                videoLink.classList.add('video-card-link'); // Adiciona classe para estilização
+
                 const videoCard = document.createElement('div');
                 videoCard.classList.add('video-card');
+                // Os data attributes não são mais a fonte primária, mas podem ser mantidos para compatibilidade se necessário
                 videoCard.dataset.videoId = video.id;
                 videoCard.dataset.isPro = video.is_pro; 
                 
@@ -3425,7 +3446,6 @@ if (targetElement) {
                 const categoryBadge = (categorySlug === 'all' && video.category) ? `<span class="video-category">${categoryName}</span>` : '';
                 const proBadge = video.is_pro ? '<span class="pro-badge-overlay">PRO</span>' : '';
 
-                // LÓGICA PARA A TAG "NOVO"
                 const videoCreationDate = new Date(video.created_at);
                 const isNew = videoCreationDate > twentyFourHoursAgo;
                 const newBadge = isNew ? '<span class="new-badge-overlay">NOVO</span>' : '';
@@ -3435,7 +3455,6 @@ if (targetElement) {
                         ${proBadge}
                         ${newBadge}
                         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Flag_of_Brazil.svg/330px-Flag_of_Brazil.svg.png" alt="Bandeira do Brasil" class="flag-overlay">
-                        <!-- Otimização: Lazy Loading + Redimensionamento -->
                         <img loading="lazy" src="${video.thumbnail_url}?transform=w-400,h-225" alt="Thumbnail do Vídeo" class="video-thumbnail-img">
                         <span class="video-duration">${video.duration || '--:--'}</span>
                         <div class="play-icon"><i data-feather="play"></i></div>
@@ -3448,7 +3467,9 @@ if (targetElement) {
                         </div>
                         ${categoryBadge}
                     </div>`;
-                videoGrid.appendChild(videoCard);
+                
+                videoLink.appendChild(videoCard); // Adiciona o card dentro do link
+                videoGrid.appendChild(videoLink); // Adiciona o link (com o card dentro) na grade
             });
             feather.replace();
         }
@@ -3558,6 +3579,7 @@ if (targetElement) {
             playerVideo.classList.remove('sd-quality-effect');
             playerOverlay.classList.remove('active');
             mainContent.style.display = 'block';
+            document.title = originalPageTitle;
         }
 
         // --- FUNÇÕES DE INTERAÇÃO COM FIREBASE (LIKES/COMENTÁRIOS) ---
@@ -4269,18 +4291,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Event Listeners Principais
             document.querySelector('.video-grid').addEventListener('click', (e) => {
-                const card = e.target.closest('.video-card');
-                if (card && card.dataset.videoId) {
-                    // Simplificado para usar a função central
-                    tryToOpenVideo(card.dataset.videoId);
+                const cardLink = e.target.closest('.video-card-link');
+                if (cardLink) {
+                    // Previne a navegação padrão para que o player em modal possa abrir
+                    e.preventDefault();
+                    // Extrai o ID do vídeo do href do link
+                    const videoId = new URL(cardLink.href).searchParams.get('v');
+                    if (videoId) {
+                        tryToOpenVideo(videoId);
+                    }
                 }
             });
             
             document.getElementById('recommendations-list').addEventListener('click', (e) => { 
-                const card = e.target.closest('.recommendation-card');
-                if (card && card.dataset.videoId) {
-                    // Simplificado para usar a função central
-                    tryToOpenVideo(card.dataset.videoId);
+                const cardLink = e.target.closest('.recommendation-card-link');
+                if (cardLink) {
+                    e.preventDefault();
+                    const videoId = new URL(cardLink.href).searchParams.get('v');
+                    if (videoId) {
+                        tryToOpenVideo(videoId);
+                    }
                 }
             });
 
@@ -4850,7 +4880,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="new-price">R$14.99</span>
                     <span class="period">/mês</span>
                 </div>
-                <p class="billing-details">Total R$179,90 / Cobrado anualmente</p>
+                <p class="billing-details"></p>
 
                 <button id="get-pro-btn" class="btn-auth">Tornar-se Pro</button>
 
