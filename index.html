@@ -1546,7 +1546,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v12.02</span>
+        <span class="version-number">v12.03</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -1596,7 +1596,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="video-player-details"><h2 id="player-video-title"></h2><p id="player-video-description"></p></div>
+                <div class="video-player-details">
+    <h2 id="player-video-title"></h2>
+    <div id="player-category-container" style="margin-top: 10px; margin-bottom: 15px;">
+        <a href="#" id="player-video-category-btn" class="video-category" style="text-decoration: none; cursor: pointer;"></a>
+    </div>
+    <p id="player-video-description"></p>
+</div>
                 <div class="video-actions">
                     <div class="action-btn"><i data-feather="eye"></i><span id="view-count">-</span></div>
                     <button id="like-btn" class="action-btn"><i data-feather="thumbs-up"></i><span id="like-count">-</span></button>
@@ -3391,6 +3397,19 @@ if (targetElement) {
             }
 
             document.getElementById('player-video-title').textContent = card.dataset.title;
+            const videoDataForCategory = allFetchedVideos.find(v => v.id == videoId);
+            if (videoDataForCategory) {
+                const categoryBtn = document.getElementById('player-video-category-btn');
+                const categoryContainer = document.getElementById('player-category-container');
+                const categoryName = categoriesMap.get(videoDataForCategory.category) || videoDataForCategory.category;
+                if (categoryBtn && categoryContainer && categoryName) {
+                    categoryBtn.textContent = categoryName;
+                    categoryBtn.dataset.category = videoDataForCategory.category;
+                    categoryContainer.style.display = 'block';
+                } else if (categoryContainer) {
+                    categoryContainer.style.display = 'none';
+                }
+            }
             document.getElementById('player-video-description').textContent = card.dataset.description;
             populateRecommendations(videoId);
             attachFirebaseListeners(videoId);
@@ -4352,7 +4371,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('like-btn').addEventListener('click', () => handleLikeDislike(1));
             document.getElementById('dislike-btn').addEventListener('click', () => handleLikeDislike(-1));
             document.getElementById('share-btn').addEventListener('click', handleShare);
-            document.getElementById('report-video-btn').addEventListener('click', handleReportVideo); // ADICIONADO
+            document.getElementById('report-video-btn').addEventListener('click', handleReportVideo);
+
+            document.getElementById('player-video-category-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                const categorySlug = e.currentTarget.dataset.category;
+                if (!categorySlug) return;
+
+                closePlayer();
+
+                document.querySelectorAll('#sidebar-category-list a').forEach(a => {
+                    a.classList.toggle('active', a.dataset.category === categorySlug);
+                });
+                
+                document.querySelector('.main-content').style.display = 'block';
+                document.querySelector('.footer-info-container').style.display = 'none';
+                document.querySelectorAll('.nav-menu a').forEach(a => a.classList.remove('active'));
+                document.getElementById('home-btn').classList.add('active');
+
+                displayVideos(categorySlug, 'random');
+            });
             document.getElementById('comment-form').addEventListener('submit', handleCommentSubmit);
             document.getElementById('comments-list').addEventListener('click', (event) => {
                 const deleteBtn = event.target.closest('.delete-comment-btn');
