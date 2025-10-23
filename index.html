@@ -1105,6 +1105,7 @@
                     <a href="#" data-sort="views">Mais Vistos</a>
                     <a href="#" data-sort="likes">Mais Gostados</a>
                     <a href="#" data-sort="recent">Recentes</a>
+                    <a href="#" data-sort="hidden">Ocultos</a>
                 </div>
             </div>
             <div class="video-grid"></div>
@@ -1574,7 +1575,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v12.06</span>
+        <span class="version-number">v12.07</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -2759,10 +2760,110 @@ function resetUIToLoggedOut() {
             window.scrollTo(0, 0);
         }
 
+async function renderHiddenContentPlaceholder() {
+    const videoGrid = document.querySelector('.video-grid');
+    videoGrid.innerHTML = '';
+    document.querySelector('.video-section-header h2').textContent = 'Conteúdo Exclusivo';
+
+    let proThumbnails = [];
+    try {
+        // 1. Pega os IDs de até 20 vídeos PRO para ter uma boa variedade
+        const proStatusRef = fbDb.ref('video_metadata');
+        const snapshot = await proStatusRef.orderByChild('is_pro').equalTo(true).limitToLast(20).once('value');
+        const proVideosData = snapshot.val() || {};
+        const proVideoIds = Object.keys(proVideosData);
+
+        if (proVideoIds.length > 0) {
+            // 2. Busca os thumbnails correspondentes no Supabase
+            const { data, error } = await _supabase.from('videos').select('thumbnail_url').in('id', proVideoIds);
+            if (error) throw error;
+            // 3. Cria uma lista limpa apenas com as URLs que existem e as embaralha
+            proThumbnails = data.map(v => v.thumbnail_url).filter(Boolean);
+            for (let i = proThumbnails.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [proThumbnails[i], proThumbnails[j]] = [proThumbnails[j], proThumbnails[i]];
+            }
+        }
+    } catch (error) {
+        console.error("Não foi possível carregar os thumbnails para o placeholder:", error);
+    }
+    
+    // 4. Cria os 9 cards de placeholder
+    for (let i = 0; i < 9; i++) {
+        // 5. LÓGICA CORRIGIDA: Usa uma imagem PRO real. Se acabarem, repete as que já tem. Se não houver nenhuma, usa o placeholder.
+        const thumbnailUrl = proThumbnails.length > 0 
+            ? proThumbnails[i % proThumbnails.length] // O operador '%' garante que nunca tentaremos acessar um item que não existe
+            : 'https://placehold.co/400x225/1a1a1a/333333/png?text=+';
+            
+        const placeholderCard = document.createElement('div');
+        placeholderCard.className = 'video-card';
+        placeholderCard.style.filter = 'blur(10px)';
+        placeholderCard.style.pointerEvents = 'none';
+        placeholderCard.innerHTML = `
+            <div class="thumbnail-container">
+                <img src="${thumbnailUrl}" alt="Thumbnail Borrado" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            <div class="video-info">
+                <h4 style="background-color: var(--hover-color); height: 1.3em; width: 80%; border-radius: 4px; opacity: 0.5;"></h4>
+                 <div class="video-meta" style="margin-top: 8px;">
+                    <span style="background-color: var(--hover-color); height: 1em; width: 40px; display: inline-block; border-radius: 4px; opacity: 0.5;"></span>
+                    <span style="background-color: var(--hover-color); height: 1em; width: 40px; display: inline-block; border-radius: 4px; opacity: 0.5;"></span>
+                </div>
+            </div>`;
+        videoGrid.appendChild(placeholderCard);
+    }
+
+    // Adiciona o botão "Torne-se Pro" sobre a grade borrada
+    const proButtonOverlay = document.createElement('div');
+    proButtonOverlay.style.position = 'absolute';
+    proButtonOverlay.style.top = '50%';
+    proButtonOverlay.style.left = '50%';
+    proButtonOverlay.style.transform = 'translate(-50%, -50%)';
+    proButtonOverlay.style.zIndex = '10';
+    proButtonOverlay.style.textAlign = 'center';
+
+    const proButton = document.createElement('button');
+    proButton.innerHTML = '<i data-feather="star" style="width: 18px; height: 18px;"></i> <span>Torne-se Pro</span>';
+    proButton.className = 'btn'; 
+    proButton.style.backgroundColor = 'var(--accent-color)';
+    proButton.style.color = 'var(--primary-text-color)';
+    proButton.style.border = '2px solid rgba(255, 255, 255, 0.7)';
+    proButton.style.boxShadow = '0 5px 20px rgba(0,0,0,0.6)';
+    proButton.style.fontSize = '1.2rem';
+    proButton.style.padding = '15px 30px';
+    proButton.onclick = () => {
+        if (currentUserProfile) {
+            openSubscriptionModal();
+        } else {
+            openAuthModal();
+        }
+    };
+
+    proButtonOverlay.appendChild(proButton);
+    const videoContentSection = document.querySelector('.video-content');
+    if (videoContentSection) {
+        videoContentSection.style.position = 'relative'; 
+        videoContentSection.appendChild(proButtonOverlay);
+        
+        const oldOverlay = document.getElementById('pro-button-overlay');
+        if(oldOverlay) oldOverlay.remove();
+        proButtonOverlay.id = 'pro-button-overlay';
+    }
+
+    setupPagination(0); // Esconde a paginação
+    feather.replace(); // Renderiza o novo ícone do botão
+}
+
+
 // --- FUNÇÃO OTIMIZADA PARA EXIBIR VÍDEOS (COM PAGINAÇÃO NO SERVIDOR E FILTROS CORRIGIDOS) ---
 async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) {
     const videoGrid = document.querySelector('.video-grid');
     if (!videoGrid) return;
+
+    // Remove o botão "Obter Pro" se ele existir de uma visualização anterior
+    const proButtonOverlay = document.getElementById('pro-button-overlay');
+    if (proButtonOverlay) proButtonOverlay.remove();
+    document.querySelector('.video-content').style.position = 'static';
     
     document.querySelector('.video-section-header h2').textContent = 'Recomendados';
     videoGrid.innerHTML = '<p>Carregando vídeos...</p>';
@@ -2771,7 +2872,40 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
         let videos = [];
         let totalVideos = 0;
 
-        if (sortBy === 'random') {
+        if (sortBy === 'hidden') {
+            document.querySelector('.video-section-header h2').textContent = 'Conteúdo Exclusivo';
+            if (currentUserProfile && currentUserProfile.pro_info?.status === 'active') {
+                // Usuário é PRO, busca os vídeos PRO
+                const proStatusRef = fbDb.ref('video_metadata');
+                const snapshot = await proStatusRef.orderByChild('is_pro').equalTo(true).once('value');
+                const proVideosData = snapshot.val() || {};
+                const proVideoIds = Object.keys(proVideosData);
+
+                if (proVideoIds.length === 0) {
+                    videoGrid.innerHTML = '<p>Nenhum vídeo exclusivo encontrado no momento.</p>';
+                    setupPagination(0);
+                    return;
+                }
+
+                let query = _supabase.from('videos').select('*', { count: 'exact' }).in('id', proVideoIds).eq('status', 'approved');
+                if (categorySlug && categorySlug !== 'all') {
+                    query = query.ilike('category', categorySlug);
+                }
+                
+                const startIndex = (page - 1) * videosPerPage;
+                const endIndex = startIndex + videosPerPage - 1;
+                const { data, error, count } = await query.range(startIndex, endIndex);
+
+                if (error) throw error;
+                videos = data;
+                totalVideos = count;
+
+            } else {
+                // Usuário não é PRO, mostra o placeholder
+                await renderHiddenContentPlaceholder();
+                return; // Encerra a função aqui
+            }
+        } else if (sortBy === 'random') {
             const cacheKey = `randomVideoCache_${categorySlug || 'all'}`;
             const cachedItem = localStorage.getItem(cacheKey);
             const oneHour = 60 * 60 * 1000;
@@ -2880,7 +3014,7 @@ async function displayVideos(categorySlug = 'all', sortBy = 'random', page = 1) 
             is_pro: proStatusData[video.id]?.is_pro === true
         }));
         
-        if (page === 1) {
+        if (page === 1 && sortBy !== 'hidden') { // Não atualiza o cache principal com vídeos PRO
             allFetchedVideos = combinedVideos;
             setupFeaturedVideo();
         }
