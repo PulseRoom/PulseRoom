@@ -678,6 +678,97 @@
     #profile-user-age { color: var(--secondary-text-color); }
     .profile-section { margin-top: 25px; }
     .profile-section h3 { border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px; font-size: 1.2rem; }
+
+    /* Estilos para a seção de Conquistas */
+    .section-header-with-button {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .section-header-with-button h3 {
+        border-bottom: none;
+        margin: 0;
+    }
+    .text-button {
+        background: none;
+        border: none;
+        color: var(--secondary-text-color);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+    }
+    .text-button:hover {
+        color: var(--accent-color);
+    }
+    .text-button i {
+        width: 16px;
+        height: 16px;
+    }
+    .achievements-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: center; /* Centraliza os itens no mini perfil */
+    }
+    .achievement-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 80px;
+        height: 80px;
+        background-color: var(--background-color);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 10px;
+        text-align: center;
+        cursor: help; /* Indica o tooltip */
+        transition: all 0.3s ease;
+    }
+    .achievement-badge .icon {
+        margin-bottom: 5px;
+        color: var(--secondary-text-color);
+    }
+    .achievement-badge .icon i {
+        width: 32px;
+        height: 32px;
+    }
+    .achievement-badge .name {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--secondary-text-color);
+        line-height: 1.2;
+    }
+    .achievement-badge.unlocked {
+        border-color: gold;
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    }
+    .achievement-badge.unlocked .icon {
+        color: gold;
+    }
+    .achievement-badge.unlocked .name {
+        color: var(--primary-text-color);
+    }
+    .achievement-badge.locked {
+        opacity: 0.4;
+        filter: grayscale(100%);
+    }
+    .achievement-badge.locked:hover {
+        opacity: 0.7;
+        filter: grayscale(50%);
+    }
+    .achievements-grid.all-view {
+        max-height: 60vh;
+        overflow-y: auto;
+        justify-content: flex-start; /* Alinha no início no modal grande */
+        padding: 10px;
+    }
     #profile-bio-textarea { width: 100%; height: 100px; background-color: var(--background-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--primary-text-color); padding: 10px; resize: vertical; }
     #save-bio-btn { display: block; margin-top: 10px; margin-left: auto; background-color: var(--accent-color); color: var(--primary-text-color); border: none; border-radius: 15px; padding: 8px 15px; cursor: pointer; }
     #recent-comments-list .comment-item { background-color: var(--background-color); padding: 10px; border-radius: 8px; margin-bottom: 10px; }
@@ -1575,7 +1666,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v12.08</span>
+        <span class="version-number">v12.09</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -1713,6 +1804,79 @@
         let unreadChatsListener = null; // Listener global para o contador de não lidas
         let unreadChatsRef = null; // Referência para o listener global
         let recipientForNewChat = null; // Guarda o ID do usuário para nova conversa
+
+        const achievementsList = [
+            {
+                id: 'add_avatar',
+                name: 'Primeira Impressão',
+                description: 'Adicionou uma foto de perfil personalizada.',
+                icon: 'camera',
+                checker: (profile) => profile.avatar_url && !profile.avatar_url.includes('iYCPry8dBdWV7mMwfMM2yC7jb5n2')
+            },
+            {
+                id: 'get_pro',
+                name: 'Membro de Elite',
+                description: 'Assinou o plano PRO e desbloqueou todos os benefícios.',
+                icon: 'star',
+                checker: (profile) => profile.pro_info?.status === 'active'
+            },
+            {
+                id: 'first_comment',
+                name: 'Quebrando o Gelo',
+                description: 'Deixou seu primeiro comentário em um vídeo.',
+                icon: 'message-square',
+                checker: (profile) => (profile.comment_count || 0) >= 1
+            },
+            {
+                id: 'first_like',
+                name: 'Sinal de Aprovação',
+                description: 'Curtiu um vídeo pela primeira vez.',
+                icon: 'thumbs-up',
+                checker: (profile) => (profile.like_count || 0) >= 1
+            },
+            {
+                id: 'login_5_days',
+                name: 'Visitante Frequente',
+                description: 'Fez login por 5 dias consecutivos.',
+                icon: 'log-in',
+                checker: (profile) => (profile.consecutive_login_days || 0) >= 5
+            },
+            {
+                id: 'login_10_days',
+                name: 'Hóspede Regular',
+                description: 'Fez login por 10 dias consecutivos.',
+                icon: 'calendar',
+                checker: (profile) => (profile.consecutive_login_days || 0) >= 10
+            },
+            {
+                id: 'login_20_days',
+                name: 'Morador do Pulse',
+                description: 'Fez login por 20 dias consecutivos. Você é parte da família!',
+                icon: 'home',
+                checker: (profile) => (profile.consecutive_login_days || 0) >= 20
+            },
+            {
+                id: 'time_1_hour',
+                name: 'Passando o Tempo',
+                description: 'Passou 1 hora assistindo a vídeos no site.',
+                icon: 'clock',
+                checker: (profile) => (profile.time_spent_minutes || 0) >= 60
+            },
+            {
+                id: 'time_5_hours',
+                name: 'Maratonista',
+                description: 'Passou 5 horas assistindo a vídeos no site.',
+                icon: 'film',
+                checker: (profile) => (profile.time_spent_minutes || 0) >= 300
+            },
+            {
+                id: 'time_10_hours',
+                name: 'Cinéfilo Dedicado',
+                description: 'Passou 10 horas assistindo a vídeos no site. Uau!',
+                icon: 'tv',
+                checker: (profile) => (profile.time_spent_minutes || 0) >= 600
+            }
+        ];
 
         // --- FUNÇÕES DE AUTENTICAÇÃO E PERFIL (FIREBASE) ---
         function openAuthModal() { document.getElementById('auth-overlay').classList.add('active'); }
@@ -2251,7 +2415,9 @@
                 // Primeiro, criamos o objeto do novo perfil
                 const newUserProfile = {
                     full_name: fullName,
+                    full_name_lowercase: fullName.toLowerCase(), // <--- CAMPO DE BUSCA ADICIONADO
                     age: age,
+                    user_email: email, 
                     bio: '',
                     avatar_url: 'https://yxdjmyqkltaqjulfkcuu.supabase.co/storage/v1/object/public/avatars/public/iYCPry8dBdWV7mMwfMM2yC7jb5n2/images%20(3).jpeg',
                     creation_timestamp: firebase.database.ServerValue.TIMESTAMP,
@@ -2534,6 +2700,10 @@ function resetUIToLoggedOut() {
             const totalMinutes = currentUserProfile.time_spent_minutes || 0;
             const hours = Math.floor(totalMinutes / 60);
             document.getElementById('profile-time-spent').textContent = `~ ${hours} horas no site`;
+
+            // Renderiza as conquistas
+            const achievementsContainer = document.getElementById('profile-achievements-grid');
+            renderAchievements(currentUserProfile, achievementsContainer);
 
             fetchAndDisplayUserComments(currentUserProfile.uid);
             feather.replace();
@@ -3871,7 +4041,22 @@ if (targetElement) {
             const videoId = document.getElementById('video-player-overlay').dataset.currentVideoId;
             const likeRef = fbDb.ref(`videos/${videoId}/likes/${currentUserProfile.uid}`);
             const snapshot = await likeRef.once('value');
-            if (snapshot.val() === type) { likeRef.remove(); } else { likeRef.set(type); }
+            
+            const userLikesRef = fbDb.ref(`profiles/${currentUserProfile.uid}/like_count`);
+
+            if (snapshot.val() === type) { 
+                likeRef.remove(); 
+                // Se estava curtido e removeu a curtida, decrementa o contador (opcional, mas bom para precisão)
+                if (type === 1) {
+                    userLikesRef.transaction(count => (count || 1) - 1);
+                }
+            } else { 
+                // Se não estava curtido (null) e curtiu pela primeira vez
+                if (type === 1 && snapshot.val() !== 1) {
+                     userLikesRef.transaction(count => (count || 0) + 1);
+                }
+                likeRef.set(type); 
+            }
         }
 
         async function handleCommentVote(commentId, voteType) {
@@ -3979,6 +4164,10 @@ if (targetElement) {
                 if (!snapshot.exists()) { throw new Error('Perfil não encontrado.'); }
                 const profile = snapshot.val();
 
+                // Renderiza as conquistas no mini-perfil
+                const miniAchievementsContainer = document.getElementById('mini-profile-achievements-grid');
+                renderAchievements(profile, miniAchievementsContainer);
+
                 const miniAvatar = document.getElementById('mini-profile-avatar-img');
                 miniAvatar.src = profile.avatar_url || 'https://yxdjmyqkltaqjulfkcuu.supabase.co/storage/v1/object/public/avatars/public/iYCPry8dBdWV7mMwfMM2yC7jb5n2/images%20(3).jpeg';
                 
@@ -4028,11 +4217,15 @@ if (targetElement) {
                     user_id: currentUserProfile.uid,
                     full_name: currentUserProfile.full_name,
                     avatar_url: currentUserProfile.avatar_url,
-                    // CORREÇÃO APLICADA AQUI
                     is_pro: currentUserProfile.pro_info?.status === 'active',
                     timestamp: firebase.database.ServerValue.TIMESTAMP
                 });
                 document.getElementById('comment-input').value = '';
+
+                // Incrementa o contador de comentários no perfil do usuário
+                const userCommentsRef = fbDb.ref(`profiles/${currentUserProfile.uid}/comment_count`);
+                userCommentsRef.transaction(count => (count || 0) + 1);
+
             } catch (error) { alert("Erro ao enviar comentário: " + error.message); }
         }
 
@@ -4295,6 +4488,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                             return; // Interrompe a execução para o usuário banido
                         }
                         
+                        // --- LÓGICA DE LOGIN CONSECUTIVO ---
+                        if (!isAdminAction && user) { // Apenas para o usuário real, não para admin impersonando
+                            const today = getBrasiliaDate().toISOString().slice(0, 10);
+                            const lastLogin = profileData.last_login_date;
+                            
+                            if (lastLogin !== today) { // Só processa se for a primeira vez que loga no dia
+                                const yesterday = new Date(getBrasiliaDate());
+                                yesterday.setDate(yesterday.getDate() - 1);
+                                const yesterdayString = yesterday.toISOString().slice(0, 10);
+                                
+                                let updates = { last_login_date: today };
+                                if (lastLogin === yesterdayString) {
+                                    // Login foi ontem, incrementa
+                                    updates.consecutive_login_days = (profileData.consecutive_login_days || 0) + 1;
+                                } else {
+                                    // Quebrou a sequência, reseta
+                                    updates.consecutive_login_days = 1;
+                                }
+                                specificProfileRef.update(updates);
+                                // Atualiza o objeto local para refletir a mudança imediatamente na UI
+                                profileData = { ...profileData, ...updates };
+                            }
+                        }
+                        // --- FIM DA LÓGICA DE LOGIN ---
+
                         const onlineStatusRef = fbDb.ref(`online_status/${effectiveUid}`);
                         onlineStatusRef.set({ last_seen: firebase.database.ServerValue.TIMESTAMP });
                         onlineStatusRef.onDisconnect().remove();
@@ -4627,6 +4845,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('save-bio-btn').addEventListener('click', handleBioUpdate);
             document.getElementById('save-gender-btn').addEventListener('click', handleGenderUpdate);
 
+            // Listeners do Modal de Conquistas
+            document.getElementById('show-all-achievements-btn').addEventListener('click', showAllAchievements);
+            document.getElementById('all-achievements-close-btn').addEventListener('click', () => {
+                document.getElementById('all-achievements-overlay').classList.remove('active');
+                document.body.classList.remove('body-no-scroll');
+            });
+
 // Listeners do Chat ---
             document.getElementById('open-chat-btn').addEventListener('click', openChatOverlay);
             document.getElementById('chat-close-btn').addEventListener('click', closeChatOverlay);
@@ -4945,6 +5170,62 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         });
+
+        function renderAchievements(profile, containerElement) {
+            if (!profile || !containerElement) return;
+
+            const unlockedAchievements = achievementsList.filter(ach => ach.checker(profile));
+            const lockedAchievements = achievementsList.filter(ach => !ach.checker(profile));
+
+            const achievementsToShow = [
+                ...unlockedAchievements,
+                ...lockedAchievements
+            ].slice(0, 5);
+
+            containerElement.innerHTML = ''; 
+
+            if (achievementsToShow.length === 0) {
+                containerElement.innerHTML = '<p style="font-size: 0.9rem; color: var(--secondary-text-color);">Nenhuma conquista ainda.</p>';
+                return;
+            }
+
+            achievementsToShow.forEach(ach => {
+                const isUnlocked = unlockedAchievements.some(unlocked => unlocked.id === ach.id);
+                const badge = document.createElement('div');
+                badge.className = `achievement-badge ${isUnlocked ? 'unlocked' : 'locked'}`;
+                badge.title = ach.description; // Tooltip
+                badge.innerHTML = `
+                    <div class="icon"><i data-feather="${ach.icon}"></i></div>
+                    <span class="name">${ach.name}</span>
+                `;
+                containerElement.appendChild(badge);
+            });
+            feather.replace();
+        }
+
+        function showAllAchievements() {
+            if (!currentUserProfile) return;
+
+            const grid = document.getElementById('all-achievements-grid');
+            const overlay = document.getElementById('all-achievements-overlay');
+            grid.innerHTML = '';
+
+            achievementsList.forEach(ach => {
+                const isUnlocked = ach.checker(currentUserProfile);
+                const badge = document.createElement('div');
+                badge.className = `achievement-badge ${isUnlocked ? 'unlocked' : 'locked'}`;
+                badge.title = ach.description;
+                badge.innerHTML = `
+                    <div class="icon"><i data-feather="${ach.icon}"></i></div>
+                    <span class="name">${ach.name}</span>
+                `;
+                grid.appendChild(badge);
+            });
+
+            feather.replace();
+            overlay.classList.add('active');
+            document.body.classList.add('body-no-scroll');
+        }
     </script>
 
     <!-- Animação do Coelho Promocional -->
@@ -5058,6 +5339,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <option value="Outro">Outro</option>
                     </select>
                     <button id="save-gender-btn" style="display: block; margin-top: 10px; margin-left: auto; background-color: var(--accent-color); color: var(--primary-text-color); border: none; border-radius: 15px; padding: 8px 15px; cursor: pointer;">Salvar Gênero</button>
+                </div>
+
+                <div class="profile-section">
+                    <div class="section-header-with-button">
+                        <h3>Conquistas</h3>
+                        <button id="show-all-achievements-btn" class="text-button">Ver Todas <i data-feather="arrow-right-circle"></i></button>
+                    </div>
+                    <div id="profile-achievements-grid" class="achievements-grid">
+                        <!-- Conquistas serão populadas aqui pelo JS -->
+                    </div>
                 </div>
 
                 <div class="profile-section">
@@ -5188,7 +5479,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <h3>Biografia</h3>
                     <p id="mini-profile-bio" style="color: var(--secondary-text-color); font-style: italic;"></p>
                 </div>
-<div class="profile-section" style="text-align: center;">
+                <div class="profile-section">
+                    <h3>Conquistas</h3>
+                    <div id="mini-profile-achievements-grid" class="achievements-grid">
+                        <!-- Conquistas serão populadas aqui pelo JS -->
+                    </div>
+                </div>
+                <div class="profile-section" style="text-align: center;">
                     <p id="mini-profile-account-age" style="color: var(--secondary-text-color); font-size: 0.9rem; margin-bottom: 15px;"></p>
                     <!-- Botão de Enviar Mensagem -->
                     <button id="mini-profile-send-message-btn" class="btn-auth" style="width: auto; padding: 8px 20px; font-size: 0.9rem; margin-bottom: 20px;">Enviar Mensagem</button>
@@ -5427,6 +5724,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </form>
                 </div>
             </main>
+        </div>
+    </div>
+
+    <!-- JANELA MODAL DE TODAS AS CONQUISTAS -->
+    <div id="all-achievements-overlay" class="auth-overlay">
+        <div class="auth-modal" style="max-width: 700px;">
+            <button id="all-achievements-close-btn" class="auth-close-btn">&times;</button>
+            <h2 style="text-align: center; margin-bottom: 25px;">Todas as Conquistas</h2>
+            <div id="all-achievements-grid" class="achievements-grid all-view">
+                <!-- Todas as conquistas serão populadas aqui -->
+            </div>
         </div>
     </div>
 
