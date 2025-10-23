@@ -1575,7 +1575,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v12.07</span>
+        <span class="version-number">v12.08</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -4260,7 +4260,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             analyticsRef.child('daily_visits').child(today).transaction(count => (count || 0) + 1);
             // --- FIM DO ANALYTICS ---
 
-            // **LISTENER DE AUTENTICAÇÃO MOVIDO PARA CÁ (CORREÇÃO DEFINITIVA)**
+            // **LISTENER DE AUTENTICAÇÃO CORRIGIDO E EM TEMPO REAL**
+            let userProfileListener = null;
+            const profilesBaseRef = fbDb.ref('profiles');
+
             fbAuth.onAuthStateChanged(async (user) => {
                 const impersonateUid = localStorage.getItem('admin_impersonate_uid');
                 let effectiveUid = user ? user.uid : null;
@@ -4272,22 +4275,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                     localStorage.removeItem('admin_impersonate_uid');
                 }
 
+                // Desconecta qualquer listener de perfil antigo antes de prosseguir
+                if (userProfileListener) {
+                    profilesBaseRef.child(userProfileListener.uid).off('value', userProfileListener.listener);
+                    userProfileListener = null;
+                }
+
                 if (effectiveUid) {
                     clearGuestPresence();
-                    const profileRef = fbDb.ref('profiles/' + effectiveUid);
-                    profileRef.once('value', (snapshot) => {
+                    const specificProfileRef = profilesBaseRef.child(effectiveUid);
+                    
+                    // Usa .on() para criar um listener persistente que atualiza os dados em tempo real
+                    const listener = specificProfileRef.on('value', (snapshot) => {
                         let profileData = snapshot.val() || {};
 
                         if (profileData.status === 'banned') {
                             alert("Este usuário está banido.");
                             handleLogout();
-                            return;
+                            return; // Interrompe a execução para o usuário banido
                         }
                         
                         const onlineStatusRef = fbDb.ref(`online_status/${effectiveUid}`);
                         onlineStatusRef.set({ last_seen: firebase.database.ServerValue.TIMESTAMP });
                         onlineStatusRef.onDisconnect().remove();
                         
+                        // A função updateUIAfterLogin agora será chamada sempre que o perfil mudar (ex: se tornar PRO)
                         updateUIAfterLogin({ uid: effectiveUid, ...profileData });
                         listenForPendingPayment(effectiveUid);
                         listenForUnreadChats(effectiveUid);
@@ -4304,7 +4316,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const lastChecked = profileData.lastCheckedNotifications;
                         listenForNotifications(lastChecked); 
                     });
+                    
+                    // Armazena a referência ao listener para poder desconectá-lo no logout
+                    userProfileListener = { uid: effectiveUid, listener: listener };
+
                 } else {
+                    // Lógica de logout
                     if (timeSpentInterval) clearInterval(timeSpentInterval);
                     
                     if (proPaymentRef && proPaymentListener) {
