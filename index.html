@@ -282,6 +282,11 @@
     .auth-modal .form-group input { width: 100%; padding: 10px; background-color: var(--background-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--primary-text-color); }
     .auth-modal .form-group input:focus { border-color: var(--accent-color); outline: none; }
     .btn-auth { width: 100%; padding: 12px; background-color: var(--accent-color); border: none; border-radius: 8px; color: var(--primary-text-color); font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 10px; }
+    .btn-auth:disabled {
+        background-color: var(--border-color);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
     
     /* Adiciona posicionamento relativo ao container do input */
     .auth-modal .form-group {
@@ -1666,7 +1671,7 @@
         <span>-</span>
         <a href="#abuse">Abuso</a>
         <span>-</span>
-        <span class="version-number">v12.11</span>
+        <span class="version-number">v12.13</span>
     </div>
 </div> <!-- FIM DO page-wrapper -->
 
@@ -5064,6 +5069,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('subscription-close-btn').addEventListener('click', closeSubscriptionModal);
             document.getElementById('get-pro-btn').addEventListener('click', handleGetProPlan);
 
+            // --- Listeners do Modal de Termos de Assinatura ---
+            const termsOverlay = document.getElementById('terms-overlay');
+            const openTermsLink = document.getElementById('open-terms-link');
+            const closeTermsBtn = document.getElementById('terms-close-btn');
+
+            openTermsLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                termsOverlay.classList.add('active');
+            });
+
+            closeTermsBtn.addEventListener('click', () => {
+                termsOverlay.classList.remove('active');
+            });
+
+            // --- Lógica do Checkbox de Termos ---
+            const termsAgreeCheckbox = document.getElementById('terms-agree-checkbox');
+            const confirmPaymentBtn = document.getElementById('confirm-payment-btn');
+
+            confirmPaymentBtn.disabled = true; // Inicia desabilitado
+
+            termsAgreeCheckbox.addEventListener('change', () => {
+                confirmPaymentBtn.disabled = !termsAgreeCheckbox.checked;
+            });
+
             document.getElementById('copy-pix-btn').addEventListener('click', (e) => {
                 const pixInput = document.getElementById('pix-copy-paste');
                 navigator.clipboard.writeText(pixInput.value).then(() => {
@@ -5107,6 +5136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const pixArea = document.getElementById('pix-payment-area');
                 const loadingArea = document.getElementById('payment-loading-area');
+                const termsCheckbox = document.getElementById('terms-agree-checkbox');
 
                 try {
                     pixArea.style.display = 'none';
@@ -5143,6 +5173,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         loadingArea.style.display = 'none';
                         document.querySelector('.plan-card').style.display = 'block';
                         document.getElementById('pix-payer-name').value = '';
+                        // Reseta o checkbox e o botão
+                        termsCheckbox.checked = false;
+                        document.getElementById('confirm-payment-btn').disabled = true;
                     }, 500);
                 }
             });
@@ -5487,6 +5520,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <label for="pix-payer-name">Seu primeiro nome constado no comprovante</label>
                     <input type="text" id="pix-payer-name" required placeholder="Ex: Joao" style="width: 100%; padding: 10px; background-color: var(--background-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--primary-text-color);">
                 </div>
+                 <div class="form-group" style="display: flex; align-items: center; justify-content: center; margin-top: 15px; gap: 8px;">
+                    <input type="checkbox" id="terms-agree-checkbox" style="width: auto;">
+                    <label for="terms-agree-checkbox" style="margin: 0; font-size: 0.9rem;">
+                        Eu concordo com os <a href="#" id="open-terms-link" style="color: var(--accent-color); text-decoration: underline;">Termos de Assinatura</a>.
+                    </label>
+                </div>
                  <button id="confirm-payment-btn" class="btn-auth" style="margin-top: 15px;">Confirmo meu pagamento</button>
                  <button id="cancel-pix-payment-btn" class="btn-auth" style="margin-top: 10px; background-color: #e53935;">Cancelar Pagamento</button>
             </div>
@@ -5766,6 +5805,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             <h2 style="text-align: center; margin-bottom: 25px;">Todas as Conquistas</h2>
             <div id="all-achievements-grid" class="achievements-grid all-view">
                 <!-- Todas as conquistas serão populadas aqui -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JANELA MODAL DOS TERMOS DE ASSINATURA -->
+    <div id="terms-overlay" class="auth-overlay">
+        <div class="auth-modal" style="max-width: 550px;">
+            <button id="terms-close-btn" class="auth-close-btn">&times;</button>
+            <h2 style="text-align: center; margin-bottom: 25px; color: var(--accent-color);">Termos de Assinatura PRO</h2>
+            <div style="color: var(--secondary-text-color); line-height: 1.6;">
+                <p>Ao prosseguir com a assinatura, você concorda com os seguintes pontos:</p>
+                <ul style="list-style-position: inside; padding-left: 10px;">
+                    <li style="margin-bottom: 10px;"><strong>Duração:</strong> A assinatura do plano PRO é válida por um período de 30 (trinta) dias a contar da data de confirmação do pagamento.</li>
+                    <li style="margin-bottom: 10px;"><strong>Pagamento:</strong> O pagamento é único e realizado exclusivamente via PIX. Não é uma cobrança recorrente.</li>
+                    <li style="margin-bottom: 10px;"><strong>Não Reembolsável:</strong> Uma vez que o pagamento é confirmado e o acesso aos benefícios PRO é liberado, o valor da assinatura não poderá ser reembolsado, total ou parcialmente, sob nenhuma circunstância.</li>
+                    <li style="margin-bottom: 10px;"><strong>Expiração:</strong> Após o término do período de 30 dias, seu acesso aos benefícios do plano PRO será automaticamente revogado. Para continuar usufruindo dos benefícios, uma nova assinatura deverá ser realizada.</li>
+                </ul>
             </div>
         </div>
     </div>
